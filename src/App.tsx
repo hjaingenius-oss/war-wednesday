@@ -154,6 +154,7 @@ function Leaderboard() {
 
 function MatchHistory() {
   const { matches, rows, players, matchDays } = useData();
+  const nav = useNavigate();
   const matchDisplayIds = useMemo(() => generateMatchDisplayIds(matches), [matches]);
   const top = (id:number) => {
     const r = rows.filter((x)=>x.matchId===id).sort((a,b)=>b.kills-a.kills)[0];
@@ -162,7 +163,7 @@ function MatchHistory() {
   const grouped = matchDays.map((md) => ({ day: md, games: matches.filter((m) => m.matchDayId === md.id) })).filter((g) => g.games.length > 0);
   return <div className="card"><h2>Match History</h2>
     {grouped.map((g) => <section key={g.day.id} className="matchday-panel"><h3>{g.day.title}</h3><p className="muted">{g.day.eventDate} / {g.games.length} matches</p><div className="table-wrap"><table><thead><tr><th>Match ID</th><th>Date</th><th>Map</th><th>Score</th><th>Top Fragger</th><th>Detail</th></tr></thead><tbody>
-    {g.games.map((m)=><tr key={m.id}><td>{getMatchDisplayId(m.id, matchDisplayIds)}</td><td>{m.date}</td><td>{normalizeMapName(m.map)}</td><td>{m.teamAScore}-{m.teamBScore}</td><td>{top(m.id!)}</td><td><NavLink to={`/matches/${m.id}`}>Open</NavLink></td></tr>)}
+    {g.games.map((m)=><tr key={m.id} className="clickable-row" onClick={()=>nav(`/matches/${m.id}`)}><td>{getMatchDisplayId(m.id, matchDisplayIds)}</td><td>{m.date}</td><td>{normalizeMapName(m.map)}</td><td>{m.teamAScore}-{m.teamBScore}</td><td>{top(m.id!)}</td><td><NavLink to={`/matches/${m.id}`} onClick={(e)=>e.stopPropagation()}>Open</NavLink></td></tr>)}
     </tbody></table></div></section>)}
   </div>;
 }
@@ -196,6 +197,8 @@ function StatsPage() {
   const allTime = getAllTimeRecords(players, rows, matches, knifeEvents, matchDisplayIds);
   const knifeBoard = getKnifeBoard(players, knifeEvents, matchDisplayIds);
   const moments = getMatchdayMoments(players, rows, matches, knifeEvents, matchDisplayIds);
+  const latestMatch = [...matches].sort((a, b) => b.date.localeCompare(a.date) || (b.id || 0) - (a.id || 0))[0];
+  const latestMatchday = latestMatch?.matchDayId ? matchDays.find((d) => d.id === latestMatch.matchDayId) : undefined;
   const topMatchdayScore = board.allRows
     .flatMap((r) => r.matchdayScores.map((s) => ({ playerId: r.playerId, name: r.name, ...s })))
     .sort((a, b) => b.score - a.score)[0];
@@ -232,7 +235,7 @@ function StatsPage() {
     </section>
     <section className="grid2">
       <div className="card"><h3>Knife Board</h3><div className="row"><span>Knife Artist</span><span>{allTime.knifeArtist?.name || '-'} ({allTime.knifeArtist?.count || 0})</span></div><div className="row"><span>Knife Victim</span><span>{allTime.knifeVictim?.name || '-'} ({allTime.knifeVictim?.count || 0})</span></div><div className="row"><span>Biggest Knife Rivalry</span><span>{knifeBoard.rivalryText || '-'}</span></div><div className="row"><span>Latest Knife Moment</span><span>{knifeBoard.latestText || '-'}</span></div></div>
-      <div className="card"><h3>Matchday Moments</h3>{moments.length === 0 ? <p className="muted">No moments yet.</p> : moments.map((line, i) => <div className="row" key={i}><span>{line}</span></div>)}</div>
+      <div className="card"><h3>Matchday Moments</h3><p className="muted">{latestMatchday ? `${latestMatchday.title} (${latestMatchday.eventDate})` : 'Latest available matchday'}</p>{moments.length === 0 ? <p className="muted">No moments yet.</p> : moments.map((line, i) => <div className="row" key={i}><span>{line}</span></div>)}</div>
     </section>
   </div>;
 }

@@ -500,6 +500,10 @@ tr:hover td {
   background: rgba(65,234,212,.06);
 }
 
+.clickable-row {
+  cursor: pointer;
+}
+
 .form-cell {
   display: inline-flex;
   align-items: center;

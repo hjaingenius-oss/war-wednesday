@@ -1,5 +1,5 @@
 import type { KnifeEvent, Match, MatchDay, MatchPlayer, Player } from './types';
-import { safeKD, safeNumber } from './lib/scoring';
+import { calculateMatchScore, normalizeResult, safeKD, safeNumber } from './lib/scoring';
 
 export type PlayerCategory = 'Regular' | 'Impact Player' | 'Cameo' | 'Inactive';
 
@@ -79,25 +79,37 @@ export function calculateTotalPointsForMatch(row: Pick<MatchPlayer, 'result' | '
 export function calculateMatchValue(
   row: Pick<MatchPlayer, 'result' | 'kills' | 'deaths' | 'assists' | 'damage' | 'hsPercent' | 'playerId'>,
   match?: Pick<Match, 'teamAScore' | 'teamBScore'>,
-  _matchRows: Array<Pick<MatchPlayer, 'result' | 'kills' | 'assists' | 'deaths' | 'playerId' | 'team'>> = []
+  matchRows: Array<Pick<MatchPlayer, 'result' | 'kills' | 'assists' | 'deaths' | 'playerId' | 'team' | 'mvps'>> = []
 ) {
-  const roundsPlayed = Math.max(0, safeNumber(match?.teamAScore) + safeNumber(match?.teamBScore));
-  const kills = safeNumber(row.kills);
-  const deaths = safeNumber(row.deaths);
-  const assists = safeNumber(row.assists);
-  const kd = kills / Math.max(deaths, 1);
-  const damage = safeNumber((row as MatchPlayer).damage);
-  const hsPercent = safeNumber((row as MatchPlayer).hsPercent);
-  const adr = roundsPlayed > 0 ? damage / roundsPlayed : 0;
-  const kpr = roundsPlayed > 0 ? kills / roundsPlayed : 0;
-  const apr = roundsPlayed > 0 ? assists / roundsPlayed : 0;
-  const damageScore = Math.min(100, (adr / 110) * 100);
-  const killScore = Math.min(100, (kpr / 0.9) * 100);
-  const kdScore = Math.min(100, (kd / 1.6) * 100);
-  const assistScore = Math.min(100, (apr / 0.35) * 100);
-  const headshotScore = hsPercent;
-  const resultScore = row.result === 'WIN' ? 100 : row.result === 'DRAW' ? 50 : 0;
-  return (0.35 * damageScore) + (0.25 * killScore) + (0.20 * kdScore) + (0.10 * assistScore) + (0.05 * headshotScore) + (0.05 * resultScore);
+  const result = normalizeResult(row.result);
+  const scoreA = safeNumber(match?.teamAScore);
+  const scoreB = safeNumber(match?.teamBScore);
+  let teamRoundsWon = result === 'WIN' ? Math.max(scoreA, scoreB) : result === 'LOSS' ? Math.min(scoreA, scoreB) : scoreA;
+  let enemyRoundsWon = result === 'WIN' ? Math.min(scoreA, scoreB) : result === 'LOSS' ? Math.max(scoreA, scoreB) : scoreB;
+  if (scoreA <= 0 && scoreB <= 0) {
+    teamRoundsWon = 0;
+    enemyRoundsWon = 0;
+  }
+
+  let enemyTeamSize = 5;
+  const me = matchRows.find((r) => r.playerId === row.playerId);
+  if (me?.team) {
+    const enemies = matchRows.filter((r) => r.team !== me.team);
+    if (enemies.length > 0) enemyTeamSize = enemies.length;
+  }
+
+  return calculateMatchScore({
+    kills: safeNumber(row.kills),
+    deaths: safeNumber(row.deaths),
+    assists: safeNumber(row.assists),
+    damage: safeNumber((row as MatchPlayer).damage),
+    headshotPercentage: safeNumber((row as MatchPlayer).hsPercent),
+    mvps: safeNumber((row as MatchPlayer).mvps),
+    result,
+    teamRoundsWon,
+    enemyRoundsWon,
+    enemyTeamSize
+  });
 }
 
 export function getMatchWindow(matches: Match[], filter: string) {
@@ -762,22 +774,26 @@ export function getMatchdayMoments(
   }
   const recentRows = [...rows].sort((a, b) => (b.id || 0) - (a.id || 0)).slice(0, 12);
   const moments: string[] = [];
-  const topKillsRow = [...recentRows].sort((a, b) => b.kills - a.kills)[0];
-  if (topKillsRow) moments.push(`${nameOf(topKillsRow.playerId)} dropped ${topKillsRow.kills} kills in ${getMatchDisplayId(topKillsRow.matchId, matchDisplayIds)}.`);
-  const topMvRow = [...recentRows].sort((a, b) => calculateMatchValue(b, matchById.get(b.matchId), rowsByMatchId.get(b.matchId) || []) - calculateMatchValue(a, matchById.get(a.matchId), rowsByMatchId.get(a.matchId) || []))[0];
-  if (topMvRow) moments.push(`${nameOf(topMvRow.playerId)} posted the best score of the night: ${fmt1(calculateMatchValue(topMvRow, matchById.get(topMvRow.matchId), rowsByMatchId.get(topMvRow.matchId) || []))}.`);
   const latestMatch = [...matches].sort((a, b) => b.date.localeCompare(a.date) || (b.id || 0) - (a.id || 0))[0];
   const latestMatchdayId = latestMatch?.matchDayId;
   const latestMatchdayRows = latestMatchdayId
     ? rows.filter((r) => matchById.get(r.matchId)?.matchDayId === latestMatchdayId)
     : [];
-  const assistPool = latestMatchdayRows.length ? latestMatchdayRows : recentRows;
-  const topAssistRow = [...assistPool].sort((a, b) => b.assists - a.assists)[0];
-  if (topAssistRow) moments.push(`${nameOf(topAssistRow.playerId)} was Assist Hero this matchday with ${topAssistRow.assists} assists.`);
+  const scopedRows = latestMatchdayRows.length ? latestMatchdayRows : recentRows;
+
+  const topKillsRow = [...scopedRows].sort((a, b) => b.kills - a.kills)[0];
+  if (topKillsRow) moments.push(`${nameOf(topKillsRow.playerId)} dropped ${topKillsRow.kills} kills in ${getMatchDisplayId(topKillsRow.matchId, matchDisplayIds)}.`);
+
+  const topMvRow = [...scopedRows].sort((a, b) => calculateMatchValue(b, matchById.get(b.matchId), rowsByMatchId.get(b.matchId) || []) - calculateMatchValue(a, matchById.get(a.matchId), rowsByMatchId.get(a.matchId) || []))[0];
+  if (topMvRow) moments.push(`${nameOf(topMvRow.playerId)} posted the best score of the night: ${fmt1(calculateMatchValue(topMvRow, matchById.get(topMvRow.matchId), rowsByMatchId.get(topMvRow.matchId) || []))} in ${getMatchDisplayId(topMvRow.matchId, matchDisplayIds)}.`);
+
+  const topAssistRow = [...scopedRows].sort((a, b) => b.assists - a.assists)[0];
+  if (topAssistRow) moments.push(`${nameOf(topAssistRow.playerId)} was Assist Hero this matchday with ${topAssistRow.assists} assists in ${getMatchDisplayId(topAssistRow.matchId, matchDisplayIds)}.`);
+
   const latestKnife = [...knifeEvents].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
   if (latestKnife) moments.push(`${nameOf(latestKnife.attackerPlayerId)} knifed ${nameOf(latestKnife.victimPlayerId)} in ${getMatchDisplayId(latestKnife.matchId, matchDisplayIds)}.`);
-  const roughRow = [...recentRows].sort((a, b) => (b.deaths - b.kills) - (a.deaths - a.kills))[0];
-  if (roughRow) moments.push(`${nameOf(roughRow.playerId)} had a rough one: ${roughRow.kills}/${roughRow.deaths} in ${getMatchDisplayId(roughRow.matchId, matchDisplayIds)}.`);
+  const roughRow = [...scopedRows].sort((a, b) => (b.deaths - b.kills) - (a.deaths - a.kills))[0];
+  if (roughRow) moments.push(`${nameOf(roughRow.playerId)} had a rough one: ${roughRow.kills} kills and ${roughRow.deaths} deaths in ${getMatchDisplayId(roughRow.matchId, matchDisplayIds)}.`);
   return moments.slice(0, 5);
 }
 

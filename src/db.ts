@@ -60,6 +60,8 @@ type RawPlayerRow = {
   kills: number;
   deaths: number;
   assists: number;
+  hsPercent: number;
+  damage: number;
 };
 
 type RawMatch = {
@@ -76,67 +78,67 @@ const importedMatches: RawMatch[] = [
   {
     date: '2026-05-28', matchDayTitle: 'War Wednesday - May 28, 2026', map: 'Mirage', teamAScore: 13, teamBScore: 10, winningTeam: 'Side A',
     rows: [
-      { name: 'Radha', team: 'Side A', result: 'WIN', kills: 27, deaths: 16, assists: 5 },
-      { name: 'VPS', team: 'Side A', result: 'WIN', kills: 21, deaths: 13, assists: 5 },
-      { name: 'Aman', team: 'Side A', result: 'WIN', kills: 17, deaths: 15, assists: 3 },
-      { name: 'fatal_destiny', team: 'Side A', result: 'WIN', kills: 17, deaths: 19, assists: 4 },
-      { name: 'Voldemort', team: 'Side A', result: 'WIN', kills: 9, deaths: 15, assists: 5 },
-      { name: 'Manson', team: 'Side B', result: 'LOSS', kills: 21, deaths: 16, assists: 2 },
-      { name: 'Hodor bitch!', team: 'Side B', result: 'LOSS', kills: 21, deaths: 19, assists: 5 },
-      { name: 'aks289', team: 'Side B', result: 'LOSS', kills: 20, deaths: 19, assists: 6 },
-      { name: 'Bob Marde', team: 'Side B', result: 'LOSS', kills: 12, deaths: 17, assists: 5 },
-      { name: 'Mere Baap', team: 'Side B', result: 'LOSS', kills: 9, deaths: 17, assists: 2 }
+      { name: 'Radha', team: 'Side A', result: 'WIN', kills: 27, deaths: 16, assists: 5, hsPercent: 18, damage: 2937 },
+      { name: 'VPS', team: 'Side A', result: 'WIN', kills: 21, deaths: 13, assists: 5, hsPercent: 38, damage: 2147 },
+      { name: 'Aman', team: 'Side A', result: 'WIN', kills: 17, deaths: 15, assists: 3, hsPercent: 35, damage: 1750 },
+      { name: 'fatal_destiny', team: 'Side A', result: 'WIN', kills: 17, deaths: 19, assists: 4, hsPercent: 58, damage: 1458 },
+      { name: 'Voldemort', team: 'Side A', result: 'WIN', kills: 9, deaths: 15, assists: 5, hsPercent: 33, damage: 1343 },
+      { name: 'Manson', team: 'Side B', result: 'LOSS', kills: 21, deaths: 16, assists: 2, hsPercent: 33, damage: 2329 },
+      { name: 'Hodor bitch!', team: 'Side B', result: 'LOSS', kills: 21, deaths: 19, assists: 5, hsPercent: 42, damage: 2199 },
+      { name: 'aks289', team: 'Side B', result: 'LOSS', kills: 20, deaths: 19, assists: 6, hsPercent: 55, damage: 2078 },
+      { name: 'Bob Marde', team: 'Side B', result: 'LOSS', kills: 12, deaths: 17, assists: 5, hsPercent: 33, damage: 1392 },
+      { name: 'Mere Baap', team: 'Side B', result: 'LOSS', kills: 9, deaths: 17, assists: 2, hsPercent: 11, damage: 682 }
     ]
   },
   {
     date: '2026-05-28', matchDayTitle: 'War Wednesday - May 28, 2026', map: 'Dust II', teamAScore: 13, teamBScore: 3, winningTeam: 'Side A',
     rows: [
-      { name: 'Manson', team: 'Side A', result: 'WIN', kills: 18, deaths: 10, assists: 7 },
-      { name: 'Mere Baap', team: 'Side A', result: 'WIN', kills: 19, deaths: 7, assists: 1 },
-      { name: 'Bob Marde', team: 'Side A', result: 'WIN', kills: 17, deaths: 10, assists: 4 },
-      { name: '!!EDaNgErBoYe!!', team: 'Side A', result: 'WIN', kills: 15, deaths: 6, assists: 2 },
-      { name: 'Hodor bitch!', team: 'Side A', result: 'WIN', kills: 13, deaths: 9, assists: 4 },
-      { name: 'aks289', team: 'Side A', result: 'WIN', kills: 7, deaths: 11, assists: 3 },
-      { name: 'VPS', team: 'Side B', result: 'LOSS', kills: 11, deaths: 15, assists: 4 },
-      { name: 'fatal_destiny', team: 'Side B', result: 'LOSS', kills: 10, deaths: 16, assists: 7 },
-      { name: 'Aman', team: 'Side B', result: 'LOSS', kills: 7, deaths: 15, assists: 4 },
-      { name: 'Radha', team: 'Side B', result: 'LOSS', kills: 14, deaths: 15, assists: 1 },
-      { name: 'Voldemort', team: 'Side B', result: 'LOSS', kills: 5, deaths: 15, assists: 1 },
-      { name: 'Daa', team: 'Side B', result: 'LOSS', kills: 6, deaths: 14, assists: 0 }
+      { name: 'Manson', team: 'Side A', result: 'WIN', kills: 18, deaths: 10, assists: 7, hsPercent: 44, damage: 2185 },
+      { name: 'Mere Baap', team: 'Side A', result: 'WIN', kills: 19, deaths: 7, assists: 1, hsPercent: 26, damage: 1753 },
+      { name: 'Bob Marde', team: 'Side A', result: 'WIN', kills: 17, deaths: 10, assists: 4, hsPercent: 29, damage: 1515 },
+      { name: '!!EDaNgErBoYe!!', team: 'Side A', result: 'WIN', kills: 15, deaths: 6, assists: 2, hsPercent: 33, damage: 1352 },
+      { name: 'Hodor bitch!', team: 'Side A', result: 'WIN', kills: 13, deaths: 9, assists: 4, hsPercent: 38, damage: 1242 },
+      { name: 'aks289', team: 'Side A', result: 'WIN', kills: 7, deaths: 11, assists: 3, hsPercent: 57, damage: 890 },
+      { name: 'VPS', team: 'Side B', result: 'LOSS', kills: 11, deaths: 15, assists: 4, hsPercent: 45, damage: 1525 },
+      { name: 'fatal_destiny', team: 'Side B', result: 'LOSS', kills: 10, deaths: 16, assists: 7, hsPercent: 30, damage: 1316 },
+      { name: 'Aman', team: 'Side B', result: 'LOSS', kills: 7, deaths: 15, assists: 4, hsPercent: 57, damage: 1229 },
+      { name: 'Radha', team: 'Side B', result: 'LOSS', kills: 14, deaths: 15, assists: 1, hsPercent: 57, damage: 1057 },
+      { name: 'Voldemort', team: 'Side B', result: 'LOSS', kills: 5, deaths: 15, assists: 1, hsPercent: 60, damage: 708 },
+      { name: 'Daa', team: 'Side B', result: 'LOSS', kills: 6, deaths: 14, assists: 0, hsPercent: 33, damage: 572 }
     ]
   },
   {
     date: '2026-05-28', matchDayTitle: 'War Wednesday - May 28, 2026', map: 'Ancient', teamAScore: 12, teamBScore: 12, winningTeam: 'Draw',
     rows: [
-      { name: 'Manson', team: 'Side A', result: 'DRAW', kills: 20, deaths: 21, assists: 8 },
-      { name: 'aks289', team: 'Side A', result: 'DRAW', kills: 24, deaths: 18, assists: 6 },
-      { name: 'Bob Marde', team: 'Side A', result: 'DRAW', kills: 16, deaths: 19, assists: 8 },
-      { name: '!!EDaNgErBoYe!!', team: 'Side A', result: 'DRAW', kills: 16, deaths: 19, assists: 6 },
-      { name: 'Mere Baap', team: 'Side A', result: 'DRAW', kills: 14, deaths: 21, assists: 5 },
-      { name: 'Hodor bitch!', team: 'Side A', result: 'DRAW', kills: 15, deaths: 20, assists: 5 },
-      { name: 'Aman', team: 'Side B', result: 'DRAW', kills: 21, deaths: 18, assists: 14 },
-      { name: 'Radha', team: 'Side B', result: 'DRAW', kills: 22, deaths: 20, assists: 6 },
-      { name: 'VPS', team: 'Side B', result: 'DRAW', kills: 26, deaths: 15, assists: 6 },
-      { name: 'fatal_destiny', team: 'Side B', result: 'DRAW', kills: 18, deaths: 16, assists: 5 },
-      { name: 'Voldemort', team: 'Side B', result: 'DRAW', kills: 14, deaths: 18, assists: 8 },
-      { name: 'Daa', team: 'Side B', result: 'DRAW', kills: 17, deaths: 18, assists: 4 }
+      { name: 'Manson', team: 'Side A', result: 'DRAW', kills: 20, deaths: 21, assists: 8, hsPercent: 25, damage: 2281 },
+      { name: 'aks289', team: 'Side A', result: 'DRAW', kills: 24, deaths: 18, assists: 6, hsPercent: 20, damage: 2169 },
+      { name: 'Bob Marde', team: 'Side A', result: 'DRAW', kills: 16, deaths: 19, assists: 8, hsPercent: 31, damage: 1892 },
+      { name: '!!EDaNgErBoYe!!', team: 'Side A', result: 'DRAW', kills: 16, deaths: 19, assists: 6, hsPercent: 37, damage: 1767 },
+      { name: 'Mere Baap', team: 'Side A', result: 'DRAW', kills: 14, deaths: 21, assists: 5, hsPercent: 21, damage: 1683 },
+      { name: 'Hodor bitch!', team: 'Side A', result: 'DRAW', kills: 15, deaths: 20, assists: 5, hsPercent: 6, damage: 1438 },
+      { name: 'Aman', team: 'Side B', result: 'DRAW', kills: 21, deaths: 18, assists: 14, hsPercent: 23, damage: 2584 },
+      { name: 'Radha', team: 'Side B', result: 'DRAW', kills: 22, deaths: 20, assists: 6, hsPercent: 27, damage: 2506 },
+      { name: 'VPS', team: 'Side B', result: 'DRAW', kills: 26, deaths: 15, assists: 6, hsPercent: 30, damage: 2499 },
+      { name: 'fatal_destiny', team: 'Side B', result: 'DRAW', kills: 18, deaths: 16, assists: 5, hsPercent: 55, damage: 1678 },
+      { name: 'Voldemort', team: 'Side B', result: 'DRAW', kills: 14, deaths: 18, assists: 8, hsPercent: 42, damage: 1667 },
+      { name: 'Daa', team: 'Side B', result: 'DRAW', kills: 17, deaths: 18, assists: 4, hsPercent: 23, damage: 1662 }
     ]
   },
   {
     date: '2026-05-28', matchDayTitle: 'War Wednesday - May 28, 2026', map: 'Inferno', teamAScore: 13, teamBScore: 8, winningTeam: 'Side A',
     rows: [
-      { name: 'Radha', team: 'Side A', result: 'WIN', kills: 29, deaths: 14, assists: 3 },
-      { name: 'Aman', team: 'Side A', result: 'WIN', kills: 23, deaths: 16, assists: 7 },
-      { name: 'fatal_destiny', team: 'Side A', result: 'WIN', kills: 18, deaths: 12, assists: 5 },
-      { name: 'VPS', team: 'Side A', result: 'WIN', kills: 13, deaths: 14, assists: 3 },
-      { name: 'Voldemort', team: 'Side A', result: 'WIN', kills: 12, deaths: 14, assists: 5 },
-      { name: 'Daa', team: 'Side A', result: 'WIN', kills: 8, deaths: 14, assists: 3 },
-      { name: '!!EDaNgErBoYe!!', team: 'Side B', result: 'LOSS', kills: 15, deaths: 16, assists: 5 },
-      { name: 'Manson', team: 'Side B', result: 'LOSS', kills: 20, deaths: 18, assists: 1 },
-      { name: 'Bob Marde', team: 'Side B', result: 'LOSS', kills: 16, deaths: 16, assists: 5 },
-      { name: 'aks289', team: 'Side B', result: 'LOSS', kills: 14, deaths: 18, assists: 6 },
-      { name: 'Mere Baap', team: 'Side B', result: 'LOSS', kills: 14, deaths: 16, assists: 1 },
-      { name: 'Hodor bitch!', team: 'Side B', result: 'LOSS', kills: 5, deaths: 19, assists: 8 }
+      { name: 'Radha', team: 'Side A', result: 'WIN', kills: 29, deaths: 14, assists: 3, hsPercent: 20, damage: 2861 },
+      { name: 'Aman', team: 'Side A', result: 'WIN', kills: 23, deaths: 16, assists: 7, hsPercent: 56, damage: 2679 },
+      { name: 'fatal_destiny', team: 'Side A', result: 'WIN', kills: 18, deaths: 12, assists: 5, hsPercent: 55, damage: 1905 },
+      { name: 'VPS', team: 'Side A', result: 'WIN', kills: 13, deaths: 14, assists: 3, hsPercent: 38, damage: 1525 },
+      { name: 'Voldemort', team: 'Side A', result: 'WIN', kills: 12, deaths: 14, assists: 5, hsPercent: 25, damage: 979 },
+      { name: 'Daa', team: 'Side A', result: 'WIN', kills: 8, deaths: 14, assists: 3, hsPercent: 25, damage: 848 },
+      { name: '!!EDaNgErBoYe!!', team: 'Side B', result: 'LOSS', kills: 15, deaths: 16, assists: 5, hsPercent: 20, damage: 1941 },
+      { name: 'Manson', team: 'Side B', result: 'LOSS', kills: 20, deaths: 18, assists: 1, hsPercent: 5, damage: 1805 },
+      { name: 'Bob Marde', team: 'Side B', result: 'LOSS', kills: 16, deaths: 16, assists: 5, hsPercent: 25, damage: 1774 },
+      { name: 'aks289', team: 'Side B', result: 'LOSS', kills: 14, deaths: 18, assists: 6, hsPercent: 35, damage: 1518 },
+      { name: 'Mere Baap', team: 'Side B', result: 'LOSS', kills: 14, deaths: 16, assists: 1, hsPercent: 35, damage: 1221 },
+      { name: 'Hodor bitch!', team: 'Side B', result: 'LOSS', kills: 5, deaths: 19, assists: 8, hsPercent: 40, damage: 1165 }
     ]
   }
 ];
@@ -215,6 +217,8 @@ async function replaceWithImportedData() {
         kills: r.kills,
         deaths: r.deaths,
         assists: r.assists,
+        damage: r.damage,
+        hsPercent: r.hsPercent,
         mvps: 0,
         points: points(r.result, r.kills, r.assists, r.deaths)
       })));
@@ -237,10 +241,10 @@ async function replaceWithImportedData() {
 }
 
 export async function seedIfEmpty() {
-  const importedFlag = localStorage.getItem('cs2_imported_match_cards_v4');
+  const importedFlag = localStorage.getItem('cs2_imported_match_cards_v5');
   if (importedFlag !== '1') {
     await replaceWithImportedData();
-    localStorage.setItem('cs2_imported_match_cards_v4', '1');
+    localStorage.setItem('cs2_imported_match_cards_v5', '1');
     return;
   }
 
