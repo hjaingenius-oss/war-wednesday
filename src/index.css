@@ -422,12 +422,15 @@ nav a.active {
 }
 
 .table-wrap {
-  overflow: auto;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
-  width: 100%;
-  min-width: 900px;
+  width: max-content;
+  min-width: 1400px;
   border-collapse: collapse;
 }
 
@@ -515,6 +518,34 @@ tr:hover td {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.player-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.player-link:hover .player-id-name {
+  color: var(--acid);
+}
+
+.player-id-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.player-id-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.player-id-name {
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
 .title-chip {
