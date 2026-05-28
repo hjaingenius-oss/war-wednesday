@@ -37,6 +37,7 @@ export interface PlayerLeaderboardRow {
 export type FunAwardKey =
   | 'assistHero'
   | 'assassin'
+  | 'sharpshooter'
   | 'knifeArtist'
   | 'knifeVictim'
   | 'survivor'
@@ -345,6 +346,21 @@ export function buildFunAwards(
     if (award) awardWinners.push(award);
   };
 
+  const recentGamesByPlayer = new Map<number, MatchPlayer[]>();
+  for (const player of active) {
+    const playerRows = (rowsByPlayer.get(player.playerId) || [])
+      .slice()
+      .sort((a, b) => {
+        const am = matchById.get(a.matchId);
+        const bm = matchById.get(b.matchId);
+        const ad = am?.date || '';
+        const bd = bm?.date || '';
+        return bd.localeCompare(ad) || (safeNumber(b.matchId) - safeNumber(a.matchId));
+      })
+      .slice(0, 5);
+    recentGamesByPlayer.set(player.playerId, playerRows);
+  }
+
   const assistHero = pickBest(
     eligibleCore,
     (r) => {
@@ -387,6 +403,35 @@ export function buildFunAwards(
     playerId: assassin.playerId,
     playerName: assassin.name,
     stat: `${fmt1(assassin.kills / Math.max(1, assassin.matchesPlayed))} kills/match`
+  });
+
+  const sharpshooterPool = eligibleCore.filter((r) => (recentGamesByPlayer.get(r.playerId) || []).length >= 3);
+  const sharpshooter = pickBest(
+    sharpshooterPool,
+    (r) => {
+      const recentGames = recentGamesByPlayer.get(r.playerId) || [];
+      return average(recentGames.map((x) => safeNumber(x.kills) * (safeNumber((x as MatchPlayer).hsPercent) / 100)));
+    },
+    [
+      (r) => {
+        const recentGames = recentGamesByPlayer.get(r.playerId) || [];
+        return sum(recentGames.map((x) => safeNumber(x.kills) * (safeNumber((x as MatchPlayer).hsPercent) / 100)));
+      },
+      (r) => r.warRating,
+      (r) => r.matchesPlayed
+    ]
+  );
+  addAward(sharpshooter && {
+    key: 'sharpshooter',
+    label: 'Sharpshooter',
+    tooltip: 'Most deadly headshot impact in recent games.',
+    playerId: sharpshooter.playerId,
+    playerName: sharpshooter.name,
+    stat: (() => {
+      const recentGames = recentGamesByPlayer.get(sharpshooter.playerId) || [];
+      const avgHsKills = average(recentGames.map((x) => safeNumber(x.kills) * (safeNumber((x as MatchPlayer).hsPercent) / 100)));
+      return `${fmt1(avgHsKills)} headshot kills/game (last ${recentGames.length})`;
+    })()
   });
 
   const knifeArtist = pickBest(
