@@ -1,9 +1,9 @@
 import type { MatchPlayer, MatchResult } from '../types';
 
 export function resultPoints(result: MatchResult) {
-  if (result === 'WIN') return 10;
-  if (result === 'DRAW') return 5;
-  return 2;
+  if (result === 'WIN') return 5;
+  if (result === 'DRAW') return 3;
+  return 1;
 }
 
 export function calculatePoints(row: Pick<MatchPlayer, 'result'|'kills'|'assists'|'deaths'|'mvps'>) {
