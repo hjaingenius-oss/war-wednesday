@@ -6,6 +6,7 @@ import { db, seedIfEmpty } from './db';
 import { calculatePoints, safeKD } from './lib/scoring';
 import {
   buildLeaderboardRows,
+  buildFunAwards,
   calculateMatchValue,
   calculateTotalPointsForMatch
 } from './selectors';
@@ -17,7 +18,7 @@ const ADMIN_ENABLED = import.meta.env.DEV || import.meta.env.VITE_ENABLE_ADMIN =
 const fmt = (n: number) => Number(n.toFixed(2));
 const fmt1 = (n: number) => Number(n.toFixed(1));
 const pct = (n: number) => `${Math.round(n * 100)}%`;
-const rank = ['#1 Legend', '#2 Elite', '#3 Pro'];
+const rank = ['Rank #1', 'Rank #2', 'Rank #3'];
 const teamNames = ['Side A', 'Side B'];
 
 const playerName = (players: { id?: number; name: string }[], id: number) =>
@@ -44,6 +45,7 @@ function useData() {
 function Dashboard() {
   const { players, matches, rows, matchDays, knifeEvents } = useData();
   const leaderboard = buildLeaderboardRows(players, matchDays, matches, rows, knifeEvents, 'all');
+  const fun = buildFunAwards(players, rows, matches, leaderboard.allRows, 'all');
   const activeRows = leaderboard.allRows.filter((r) => r.matchesPlayed > 0);
   const leagueLeader = leaderboard.mainRows[0];
   const inForm = [...activeRows].sort((a, b) => b.formRating - a.formRating)[0];
@@ -77,6 +79,30 @@ function Dashboard() {
         </div>
       </aside>
     </section>
+    <section className="card">
+      <h2>League Awards</h2>
+      <div className="awards-grid">
+        {fun.awards.map((a) => <article className="award-card" key={a.key}>
+          <p className="award-title">{a.label}</p>
+          <h3>{a.playerName}</h3>
+          <p className="award-stat">{a.stat}</p>
+          <p className="muted">{a.tooltip}</p>
+        </article>)}
+      </div>
+    </section>
+    <section className="card">
+      <h2>Map Specialists</h2>
+      {fun.mapSpecialists.length === 0
+        ? <p className="muted">No map has enough sample size yet.</p>
+        : <div className="map-grid">
+          {fun.mapSpecialists.map((m) => <article className="map-card" key={m.map}>
+            <p className="award-title">{m.label}</p>
+            <h3>{m.playerName}</h3>
+            <p className="award-stat">{m.stat}</p>
+            <p className="muted">{m.tooltip}</p>
+          </article>)}
+        </div>}
+    </section>
     <section className="stats-grid">
       <div className="card stat kpi"><h3>Top Fragger</h3><p>{topFragger ? `${name(topFragger.playerId)} (${topFragger.kills} kills)` : '-'}</p></div>
       <div className="card stat kpi"><h3>Best K/D</h3><p>{bestKd ? `${bestKd.name} (${bestKd.kd})` : '-'}</p></div>
@@ -97,10 +123,10 @@ function Leaderboard() {
   return <div className="leaderboard-page"><div className="card"><h2>Leaderboard</h2><div className="actions"><select value={filter} onChange={(e)=>setFilter(e.target.value)}><option value="last10">Last 10 matches</option><option value="last20">Last 20 matches</option><option value="all">All matches</option></select></div>
   <div className="helper-grid"><p><b>War Rating</b><br/>Main skill-adjusted ranking score based on matchday performance, recency, and attendance.</p><p><b>Form</b><br/>Recent performance over the player's last 3 matchdays. * means small sample.</p><p><b>Total Points</b><br/>Raw accumulated points. Rewards volume and attendance.</p></div></div>
   <section className="card"><h2>Main Ranked Board</h2><div className="table-wrap"><table><thead><tr><th>Rank</th><th>Player</th><th>War Rating</th><th>Form</th><th>Total Points</th><th>Attendance %</th><th>Matchdays Played</th><th>Matches Played</th><th>Win %</th><th>K/D</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>Knife Kills</th><th>Category</th></tr></thead><tbody>
-  {board.mainRows.map((r,i)=><tr key={r.playerId}><td><span className={`rank-chip rank-${i+1}`}>#{i+1}</span></td><td><NavLink to={`/players/${r.playerId}`}>{r.name}</NavLink></td><td className="war-cell">{fmt1(r.warRating)}</td><td>{fmt1(r.formRating)}{r.smallSample ? ' *' : ''}</td><td>{fmt(r.totalPoints)}</td><td>{pct(r.attendanceRate)}</td><td>{r.matchdaysPlayed}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{r.kd}</td><td>{r.kills}</td><td>{r.deaths}</td><td>{r.assists}</td><td>{r.knifeKills}</td><td><span className="category-badge">{r.category}</span></td></tr>)}
+  {board.mainRows.map((r,i)=><tr key={r.playerId}><td><span className={`rank-chip rank-${i+1}`}>#{i+1}</span></td><td><NavLink to={`/players/${r.playerId}`}>{r.name}</NavLink></td><td className="war-cell">{fmt1(r.warRating)}</td><td><span className="form-cell">{fmt1(r.formRating)}{r.smallSample ? ' *' : ''}</span></td><td>{fmt(r.totalPoints)}</td><td>{pct(r.attendanceRate)}</td><td>{r.matchdaysPlayed}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{r.kd}</td><td>{r.kills}</td><td>{r.deaths}</td><td>{r.assists}</td><td>{r.knifeKills}</td><td><span className="category-badge">{r.category}</span></td></tr>)}
   </tbody></table></div></section>
   <section className="card"><h2>Impact Board</h2><p className="muted">Highlights strong low-attendance and small-sample players without affecting official ranks.</p><div className="table-wrap"><table><thead><tr><th>Category</th><th>Player</th><th>War Rating</th><th>Form</th><th>Total Points</th><th>Attendance %</th><th>Matchdays Played</th><th>Matches Played</th><th>Win %</th><th>K/D</th><th>Knife Kills</th><th>Comparison</th></tr></thead><tbody>
-  {board.impactRows.map((r)=><tr key={r.playerId}><td><span className="category-badge">{r.category}</span></td><td><NavLink to={`/players/${r.playerId}`}>{r.name}</NavLink></td><td className="war-cell">{fmt1(r.warRating)}</td><td>{fmt1(r.formRating)}{r.smallSample ? ' *' : ''}</td><td>{fmt(r.totalPoints)}</td><td>{pct(r.attendanceRate)}</td><td>{r.matchdaysPlayed}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{r.kd}</td><td>{r.knifeKills}</td><td><span className="comparison-badge">{r.comparisonBadge}</span></td></tr>)}
+  {board.impactRows.map((r)=><tr key={r.playerId}><td><span className="category-badge">{r.category}</span></td><td><NavLink to={`/players/${r.playerId}`}>{r.name}</NavLink></td><td className="war-cell">{fmt1(r.warRating)}</td><td><span className="form-cell">{fmt1(r.formRating)}{r.smallSample ? ' *' : ''}</span></td><td>{fmt(r.totalPoints)}</td><td>{pct(r.attendanceRate)}</td><td>{r.matchdaysPlayed}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{r.kd}</td><td>{r.knifeKills}</td><td><span className="comparison-badge">{r.comparisonBadge}</span></td></tr>)}
   </tbody></table></div></section></div>;
 }
 
@@ -150,6 +176,7 @@ function PlayerProfile() {
   const p = players.find((x)=>x.id===pid);
   if (!p) return <div className="card">Player not found.</div>;
   const board = buildLeaderboardRows(players, matchDays, matches, rows, knifeEvents, 'all');
+  const fun = buildFunAwards(players, rows, matches, board.allRows, 'all');
   const profile = board.allRows.find((r)=>r.playerId===pid);
   const pr = rows.filter((r)=>r.playerId===pid);
   const kills = pr.reduce((s,r)=>s+r.kills,0), deaths = pr.reduce((s,r)=>s+r.deaths,0), assists=pr.reduce((s,r)=>s+r.assists,0), points=pr.reduce((s,r)=>s+calculateTotalPointsForMatch(r),0);
@@ -161,7 +188,9 @@ function PlayerProfile() {
   const games10 = pr.filter((r) => r.kills >= 10).length;
   const games20 = pr.filter((r) => r.kills >= 20).length;
   const games30 = pr.filter((r) => r.kills >= 30).length;
+  const profileBadges = buildProfileFunBadges(pid, fun).slice(0, 3);
   return <div className="card"><h2>{p.name}</h2>{profile && profile.category !== 'Regular' && profile.wouldRank && <p className="warn">Not officially ranked due to attendance, but would rank #{profile.wouldRank} among Regulars by War Rating.</p>}<section className="stats-grid"><div className="stat card"><h3>Category</h3><p>{profile?.category || 'Inactive'}</p></div><div className="stat card"><h3>War Rating</h3><p>{fmt1(profile?.warRating || 0)}</p></div><div className="stat card"><h3>Form</h3><p>{fmt1(profile?.formRating || 0)}</p></div><div className="stat card"><h3>Total Points</h3><p>{fmt(profile?.totalPoints || points)}</p></div><div className="stat card"><h3>Attendance</h3><p>{pct(profile?.attendanceRate || 0)}</p></div><div className="stat card"><h3>Matchdays</h3><p>{profile?.matchdaysPlayed || 0}</p></div><div className="stat card"><h3>Matches</h3><p>{pr.length}</p></div><div className="stat card"><h3>Wins/Losses</h3><p>{wins}/{losses}</p></div><div className="stat card"><h3>Win %</h3><p>{pr.length?fmt1((wins/pr.length)*100):0}%</p></div><div className="stat card"><h3>K/D</h3><p>{safeKD(kills,deaths)}</p></div><div className="stat card"><h3>Knifed</h3><p>{knifeKills}</p></div><div className="stat card"><h3>Got Knifed</h3><p>{knifeDeaths}</p></div></section>
+  {profileBadges.length > 0 && <div className="badge-row">{profileBadges.map((b) => <span className="fun-badge" key={b}>{b}</span>)}</div>}
   <p>Kills {kills} | Deaths {deaths} | Assists {assists}</p>
   <p>10+ Kill Games {games10} | 20+ Kill Games {games20} | 30+ Kill Games {games30}</p>
   {profile?.comparisonBadge && <p><span className="comparison-badge">{profile.comparisonBadge}</span></p>}
@@ -169,6 +198,19 @@ function PlayerProfile() {
   <h3>Knife History</h3>{knifeHistory.map((e)=><div key={e.id} className="row"><span>{matches.find((m)=>m.id===e.matchId)?.map}</span><span>{receiptText(players, e.attackerPlayerId, e.victimPlayerId)}</span></div>)}
   <h3>Recent Matches</h3>{pr.slice(-5).reverse().map((r)=><div key={r.id} className="row"><span>{matches.find((m)=>m.id===r.matchId)?.date}</span><span>{matches.find((m)=>m.id===r.matchId)?.map}</span><span>{fmt(calculateTotalPointsForMatch(r))} Total Points</span></div>)}
   </div>;
+}
+
+function buildProfileFunBadges(playerId: number, fun: ReturnType<typeof buildFunAwards>) {
+  const badges: string[] = [];
+  for (const award of fun.awards) {
+    if (award.playerId !== playerId) continue;
+    badges.push(award.label);
+  }
+  for (const mapAward of fun.mapSpecialists) {
+    if (mapAward.playerId !== playerId) continue;
+    badges.push(mapAward.label);
+  }
+  return badges;
 }
 
 function AdminGate() {

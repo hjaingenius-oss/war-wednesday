@@ -347,6 +347,68 @@ nav a.active {
   color: var(--ink);
 }
 
+.awards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.award-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: linear-gradient(145deg, rgba(23,26,33,.92), rgba(9,10,12,.82));
+  position: relative;
+}
+
+.award-card::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(184,255,44,.6);
+  box-shadow:
+    -6px 0 0 -4px rgba(184,255,44,.6),
+    6px 0 0 -4px rgba(184,255,44,.6),
+    0 -6px 0 -4px rgba(184,255,44,.6),
+    0 6px 0 -4px rgba(184,255,44,.6);
+}
+
+.award-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.award-card h3 {
+  margin: 6px 0;
+}
+
+.award-stat {
+  margin: 0;
+  color: var(--acid);
+  font-weight: 800;
+}
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.map-card {
+  border: 1px solid rgba(65,234,212,.3);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(120deg, rgba(65,234,212,.12), transparent 35%),
+    linear-gradient(145deg, rgba(23,26,33,.92), rgba(9,10,12,.82));
+}
+
 .row {
   display: flex;
   justify-content: space-between;
@@ -423,6 +485,13 @@ th {
 
 tr:hover td {
   background: rgba(65,234,212,.06);
+}
+
+.form-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .cards {
@@ -532,6 +601,26 @@ textarea:focus {
 .rank-3 {
   color: #180d07;
   background: #c9844c;
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+
+.fun-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(184,255,44,.38);
+  background: rgba(184,255,44,.1);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 @keyframes reveal {

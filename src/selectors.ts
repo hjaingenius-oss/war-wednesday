@@ -34,6 +34,37 @@ export interface PlayerLeaderboardRow {
   matchdayScores: Array<{ matchDayId: number; title: string; date: string; score: number }>;
 }
 
+export type FunAwardKey =
+  | 'assistHero'
+  | 'assassin'
+  | 'knifeArtist'
+  | 'knifeVictim'
+  | 'wildcard'
+  | 'consistentPerformer';
+
+export interface FunAwardWinner {
+  key: FunAwardKey;
+  label: string;
+  tooltip: string;
+  playerId: number;
+  playerName: string;
+  stat: string;
+}
+
+export interface MapSpecialistWinner {
+  map: string;
+  label: string;
+  tooltip: string;
+  playerId: number;
+  playerName: string;
+  stat: string;
+}
+
+export interface FunAwardsResult {
+  awards: FunAwardWinner[];
+  mapSpecialists: MapSpecialistWinner[];
+}
+
 export function calculateTotalPointsForMatch(row: Pick<MatchPlayer, 'result' | 'kills' | 'assists' | 'deaths'>) {
   const resultPoints = row.result === 'WIN' ? 10 : row.result === 'DRAW' ? 5 : 2;
   return resultPoints + safeNumber(row.kills) + safeNumber(row.assists) * 0.5 - safeNumber(row.deaths) * 0.5;
@@ -233,6 +264,217 @@ export function buildLeaderboardRows(
   };
 }
 
+export function buildFunAwards(
+  players: Player[],
+  rows: MatchPlayer[],
+  matches: Match[],
+  leaderboardRows: PlayerLeaderboardRow[],
+  filter = 'all'
+): FunAwardsResult {
+  const windowMatches = getMatchWindow(matches, filter);
+  const windowMatchIds = new Set(windowMatches.map((m) => m.id));
+  const windowRows = rows.filter((r) => windowMatchIds.has(r.matchId));
+  const rowsByPlayer = new Map<number, MatchPlayer[]>();
+  const matchById = new Map(windowMatches.map((m) => [m.id, m]));
+  const boardByPlayer = new Map(leaderboardRows.map((r) => [r.playerId, r]));
+  const nameOf = (id: number) => players.find((p) => p.id === id)?.name || 'Unknown';
+
+  for (const row of windowRows) {
+    const playerRows = rowsByPlayer.get(row.playerId) || [];
+    playerRows.push(row);
+    rowsByPlayer.set(row.playerId, playerRows);
+  }
+
+  const active = leaderboardRows.filter((r) => r.matchesPlayed > 0);
+  const regulars = leaderboardRows.filter((r) => r.category === 'Regular');
+  const regularMedianWar = median(regulars.map((r) => r.warRating));
+  const eligibleCore = active.filter((r) => r.matchdaysPlayed >= 3 || r.category === 'Regular');
+  const eligibleWildcard = active.filter((r) => r.matchdaysPlayed >= 3);
+  const eligibleConsistent = active.filter(
+    (r) => r.matchdaysPlayed >= 3 && regularMedianWar !== undefined && r.warRating >= regularMedianWar
+  );
+
+  const awardWinners: FunAwardWinner[] = [];
+  const addAward = (award?: FunAwardWinner) => {
+    if (award) awardWinners.push(award);
+  };
+
+  const assistHero = pickBest(
+    eligibleCore,
+    (r) => (r.matchesPlayed ? r.assists / r.matchesPlayed : 0),
+    [
+      (r) => r.assists,
+      (r) => r.warRating,
+      (r) => r.matchesPlayed
+    ]
+  );
+  addAward(assistHero && {
+    key: 'assistHero',
+    label: 'Assist Hero',
+    tooltip: 'Making everyone else look good.',
+    playerId: assistHero.playerId,
+    playerName: assistHero.name,
+    stat: `${fmt1(assistHero.assists / Math.max(1, assistHero.matchesPlayed))} assists/match`
+  });
+
+  const assassin = pickBest(
+    eligibleCore,
+    (r) => (r.matchesPlayed ? r.kills / r.matchesPlayed : 0),
+    [
+      (r) => r.kills,
+      (r) => r.kd,
+      (r) => r.warRating
+    ]
+  );
+  addAward(assassin && {
+    key: 'assassin',
+    label: 'Assassin',
+    tooltip: 'Highest kill rate in the lobby.',
+    playerId: assassin.playerId,
+    playerName: assassin.name,
+    stat: `${fmt1(assassin.kills / Math.max(1, assassin.matchesPlayed))} kills/match`
+  });
+
+  const knifeArtist = pickBest(
+    active,
+    (r) => r.knifeKills,
+    [
+      (r) => (r.matchesPlayed ? r.knifeKills / r.matchesPlayed : 0),
+      (r) => r.warRating
+    ]
+  );
+  addAward(knifeArtist && {
+    key: 'knifeArtist',
+    label: 'Knife Artist',
+    tooltip: 'Brings a knife to a gunfight and somehow wins.',
+    playerId: knifeArtist.playerId,
+    playerName: knifeArtist.name,
+    stat: `${knifeArtist.knifeKills} knife kills`
+  });
+
+  const knifeVictim = pickBest(
+    active,
+    (r) => r.knifeDeaths,
+    [
+      (r) => (r.matchesPlayed ? r.knifeDeaths / r.matchesPlayed : 0),
+      (r) => -r.kd
+    ]
+  );
+  addAward(knifeVictim && {
+    key: 'knifeVictim',
+    label: 'Knife Victim',
+    tooltip: 'Check corners. Please.',
+    playerId: knifeVictim.playerId,
+    playerName: knifeVictim.name,
+    stat: `${knifeVictim.knifeDeaths} times knifed`
+  });
+
+  const wildcard = pickBest(
+    eligibleWildcard,
+    (r) => standardDeviation(r.matchdayScores.map((s) => s.score)),
+    [
+      (r) => Math.max(...r.matchdayScores.map((s) => s.score)),
+      (r) => r.warRating
+    ]
+  );
+  addAward(wildcard && {
+    key: 'wildcard',
+    label: 'Wildcard',
+    tooltip: 'Could carry. Could disappear.',
+    playerId: wildcard.playerId,
+    playerName: wildcard.name,
+    stat: `SD ${fmt1(standardDeviation(wildcard.matchdayScores.map((s) => s.score)))}`
+  });
+
+  const consistentPerformer = pickBest(
+    eligibleConsistent,
+    (r) => -standardDeviation(r.matchdayScores.map((s) => s.score)),
+    [
+      (r) => r.warRating,
+      (r) => r.formRating,
+      (r) => r.attendanceRate
+    ]
+  );
+  addAward(consistentPerformer && {
+    key: 'consistentPerformer',
+    label: 'Consistent Performer',
+    tooltip: 'Reliable every matchday.',
+    playerId: consistentPerformer.playerId,
+    playerName: consistentPerformer.name,
+    stat: `SD ${fmt1(standardDeviation(consistentPerformer.matchdayScores.map((s) => s.score)))}`
+  });
+
+  const mapGroups = new Map<string, Map<number, MatchPlayer[]>>();
+  for (const row of windowRows) {
+    const match = matchById.get(row.matchId);
+    const mapName = match?.map?.trim();
+    if (!mapName) continue;
+    if (!mapGroups.has(mapName)) mapGroups.set(mapName, new Map());
+    const playerMap = mapGroups.get(mapName)!;
+    const arr = playerMap.get(row.playerId) || [];
+    arr.push(row);
+    playerMap.set(row.playerId, arr);
+  }
+
+  const mapSpecialists: MapSpecialistWinner[] = [];
+  for (const [mapName, playerMap] of mapGroups.entries()) {
+    const candidates = [...playerMap.entries()]
+      .map(([playerId, mapRows]) => {
+        const mapAppearances = mapRows.length;
+        if (mapAppearances < 3) return null;
+        const mapMatchValueAverage = average(mapRows.map(calculateMatchValue));
+        const sampleMultiplier = mapAppearances >= 5 ? 1 : mapAppearances === 4 ? 0.95 : 0.9;
+        const mapDominanceScore = mapMatchValueAverage * sampleMultiplier;
+        const wins = mapRows.filter((r) => r.result === 'WIN').length;
+        const winPct = mapAppearances ? (wins / mapAppearances) * 100 : 0;
+        const kills = sum(mapRows.map((r) => r.kills));
+        const deaths = sum(mapRows.map((r) => r.deaths));
+        return {
+          playerId,
+          mapAppearances,
+          mapMatchValueAverage,
+          mapDominanceScore,
+          winPct,
+          kd: safeKD(kills, deaths),
+          warRating: boardByPlayer.get(playerId)?.warRating || 0
+        };
+      })
+      .filter(Boolean) as Array<{
+      playerId: number;
+      mapAppearances: number;
+      mapMatchValueAverage: number;
+      mapDominanceScore: number;
+      winPct: number;
+      kd: number;
+      warRating: number;
+    }>;
+    if (!candidates.length) continue;
+    candidates.sort((a, b) =>
+      b.mapDominanceScore - a.mapDominanceScore ||
+      b.mapMatchValueAverage - a.mapMatchValueAverage ||
+      b.winPct - a.winPct ||
+      b.kd - a.kd ||
+      b.warRating - a.warRating
+    );
+    const winner = candidates[0];
+    mapSpecialists.push({
+      map: mapName,
+      label: `${mapName} Specialist`,
+      tooltip: 'Owns this map.',
+      playerId: winner.playerId,
+      playerName: nameOf(winner.playerId),
+      stat: `${fmt1(winner.mapMatchValueAverage)} MV avg (${winner.mapAppearances} matches)`
+    });
+  }
+
+  mapSpecialists.sort((a, b) => a.map.localeCompare(b.map));
+
+  return {
+    awards: awardWinners,
+    mapSpecialists
+  };
+}
+
 export function sortMainBoard(a: PlayerLeaderboardRow, b: PlayerLeaderboardRow) {
   return b.warRating - a.warRating ||
     b.formRating - a.formRating ||
@@ -310,6 +552,24 @@ function compareMatchesDesc(a: Match, b: Match) {
   return (b.id || 0) - (a.id || 0);
 }
 
+function fmt1(n: number) {
+  return Number(n.toFixed(1));
+}
+
+function pickBest<T>(items: T[], primary: (item: T) => number, tieBreakers: Array<(item: T) => number>) {
+  if (!items.length) return undefined;
+  const sorted = [...items].sort((a, b) => {
+    const p = primary(b) - primary(a);
+    if (p !== 0) return p;
+    for (const tie of tieBreakers) {
+      const d = tie(b) - tie(a);
+      if (d !== 0) return d;
+    }
+    return 0;
+  });
+  return sorted[0];
+}
+
 function sum(values: number[]) {
   return values.reduce((total, value) => total + safeNumber(value), 0);
 }
@@ -324,4 +584,14 @@ function median(values: number[]) {
   if (!clean.length) return undefined;
   const mid = Math.floor(clean.length / 2);
   return clean.length % 2 ? clean[mid] : (clean[mid - 1] + clean[mid]) / 2;
+}
+
+function standardDeviation(values: number[]) {
+  if (!values.length) return 0;
+  const mean = average(values);
+  const variance = average(values.map((v) => {
+    const diff = v - mean;
+    return diff * diff;
+  }));
+  return Math.sqrt(variance);
 }
