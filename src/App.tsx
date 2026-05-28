@@ -140,7 +140,8 @@ function Leaderboard() {
   const { players, rows, matches, matchDays, knifeEvents } = useData();
   const [filter, setFilter] = useState('last10');
   const board = buildLeaderboardRows(players, matchDays, matches, rows, knifeEvents, filter);
-  const fun = buildFunAwards(players, rows, matches, board.allRows, filter);
+  const allTimeBoard = buildLeaderboardRows(players, matchDays, matches, rows, knifeEvents, 'all');
+  const fun = buildFunAwards(players, rows, matches, allTimeBoard.allRows, 'all');
   const playerTitles = buildPlayerFunTitleMap(fun);
   return <div className="leaderboard-page"><div className="card"><h2>Leaderboard</h2><div className="actions"><select value={filter} onChange={(e)=>setFilter(e.target.value)}><option value="last10">Last 10 matches</option><option value="last20">Last 20 matches</option><option value="all">All matches</option></select></div>
   <div className="helper-grid"><p><b>Score</b><br/>Player performance score based on damage, kills, K/D, assists, headshots, and a small result bonus.</p><p><b>Form</b><br/>Recent performance over the player's last 3 matchdays. * means small sample.</p><p><b>Total Points</b><br/>Season grind points from your match contributions.</p></div></div>
@@ -217,7 +218,7 @@ function StatsPage() {
     <section className="card">
       <h3>Map Kings</h3>
       {fun.mapSpecialists.length === 0
-        ? <p className="muted">No map has enough sample size yet.</p>
+        ? <p className="muted">No map data yet.</p>
         : <div className="map-grid">{fun.mapSpecialists.map((m) => <article className="map-card" key={m.map}><p className="award-title">{m.label}</p><h3>{m.playerName}</h3><p className="award-stat">{fmt1(m.dominanceScore)} dominance / {m.appearances} apps</p><p className="muted">{fmt1(m.kd)} K/D, {fmt1(m.winPct)}% win rate. Owns this map.</p></article>)}</div>}
     </section>
     <section className="card">
@@ -334,12 +335,151 @@ function AdminGate() {
 function AdminDashboard() {
   const nav = useNavigate();
   const { matches, matchDays } = useData();
+  const [stressBusy, setStressBusy] = useState(false);
+  const [stressMessage, setStressMessage] = useState('');
+  const canStress = import.meta.env.DEV;
   return <div className="card"><h2>Admin Dashboard</h2><div className="actions"><button onClick={()=>nav('/admin/add-match')}>Add New Match</button><button onClick={()=>nav('/admin/players')}>Manage Players</button><button onClick={()=>nav('/admin/matchdays')}>Manage Match Days</button><button onClick={()=>{sessionStorage.removeItem('admin_ok'); location.href='/admin';}}>Lock</button></div>
+  {canStress && <div className="actions"><button disabled={stressBusy} onClick={async()=>{setStressBusy(true); setStressMessage('Generating stress dataset...'); const res = await createDevStressData(); setStressMessage(res.ok ? `Added ${res.matchdays} matchdays / ${res.matches} matches / ${res.rows} player rows.` : (res.reason || 'Failed to generate data.')); setStressBusy(false);}}>Generate 20 Stress Matches (Dev Only)</button><button disabled={stressBusy} onClick={async()=>{setStressBusy(true); setStressMessage('Removing stress dataset...'); const res = await clearDevStressData(); setStressMessage(`Removed ${res.removedMatchdays} matchdays / ${res.removedMatches} matches.`); setStressBusy(false);}}>Clear Stress Data</button></div>}
+  {canStress && stressMessage && <p className="muted">{stressMessage}</p>}
   <p>{matchDays.length} match days tracked</p>
   <h3>Recent Uploaded Matches</h3>{[...matches].slice(-8).reverse().map((m)=><div className="row" key={m.id}><span>{m.date} {m.map}</span><span>{m.duplicateMarked ? 'Duplicate Marked' : ''}</span><span><button onClick={()=>nav(`/admin/edit-match/${m.id}`)}>Edit</button></span></div>)}</div>;
 }
 
 function matchFormInitial() { return { seasonId: 0, matchDayId: 0, date: '', map: '', teamAName: teamNames[0], teamBName: teamNames[1], teamAScore: 13, teamBScore: 10, winningTeam: 'Side A', notes: '' }; }
+
+function addDays(isoDate: string, days: number) {
+  const d = new Date(`${isoDate}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function pickDistinctPlayerIds(playerIds: number[], count: number) {
+  const copy = [...playerIds];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  if (copy.length >= count) return copy.slice(0, count);
+  const out = [...copy];
+  while (out.length < count) out.push(copy[out.length % Math.max(1, copy.length)]);
+  return out;
+}
+
+async function createDevStressData() {
+  const players = await db.players.toArray();
+  const seasons = await db.seasons.toArray();
+  const matchDays = await db.match_days.orderBy('eventDate').toArray();
+  if (!players.length || players.length < 8 || !seasons.length) return { ok: false, reason: 'Need at least 8 players and 1 season.' };
+  const seasonId = seasons.find((s) => s.isCurrent)?.id || seasons[0].id;
+  if (!seasonId) return { ok: false, reason: 'No season found.' };
+
+  const latestDate = matchDays.length ? matchDays[matchDays.length - 1].eventDate : new Date().toISOString().slice(0, 10);
+  const maps = ['Mirage', 'Inferno', 'Ancient', 'Dust II', 'Nuke', 'Anubis', 'Vertigo'];
+  const playerIds = players.map((p) => p.id).filter((id): id is number => Number.isFinite(id));
+
+  const newRows: MatchPlayer[] = [];
+  const knifeRows: Array<{ matchId: number; attackerPlayerId: number; victimPlayerId: number; createdAt: string }> = [];
+
+  for (let md = 1; md <= 5; md += 1) {
+    const eventDate = addDays(latestDate, md * 7);
+    const matchDayId = await db.match_days.add({
+      seasonId,
+      title: `Stress Matchday ${md}`,
+      eventDate,
+      notes: '[STRESS]',
+      createdAt: new Date().toISOString()
+    });
+
+    for (let gm = 1; gm <= 4; gm += 1) {
+      const map = maps[Math.floor(Math.random() * maps.length)];
+      const teamAScore = 13;
+      const teamBScore = [8, 9, 10, 11, 12, 13][Math.floor(Math.random() * 6)];
+      const isDraw = teamBScore === 13;
+      const winningTeam = isDraw ? 'Draw' : (teamAScore > teamBScore ? 'Side A' : 'Side B');
+      const matchId = await db.matches.add({
+        seasonId,
+        matchDayId: matchDayId as number,
+        date: eventDate,
+        map,
+        teamAName: 'Side A',
+        teamBName: 'Side B',
+        teamAScore,
+        teamBScore,
+        winningTeam,
+        notes: '[STRESS]',
+        createdAt: new Date().toISOString(),
+        duplicateMarked: false
+      });
+
+      const selected = pickDistinctPlayerIds(playerIds, 10);
+      const sideA = selected.slice(0, 5);
+      const sideB = selected.slice(5, 10);
+      const sideAResult: MatchResult = winningTeam === 'Draw' ? 'DRAW' : (winningTeam === 'Side A' ? 'WIN' : 'LOSS');
+      const sideBResult: MatchResult = winningTeam === 'Draw' ? 'DRAW' : (winningTeam === 'Side B' ? 'WIN' : 'LOSS');
+
+      const makeRow = (pid: number, team: string, result: MatchResult): MatchPlayer => {
+        const kills = Math.floor(6 + Math.random() * 24);
+        const deaths = Math.floor(8 + Math.random() * 15);
+        const assists = Math.floor(Math.random() * 10);
+        const hsPercent = Math.floor(15 + Math.random() * 55);
+        const damage = Math.floor(kills * (85 + Math.random() * 45));
+        const mvps = Math.floor(Math.random() * 4);
+        return {
+          matchId: matchId as number,
+          playerId: pid,
+          team,
+          result,
+          kills,
+          deaths,
+          assists,
+          damage,
+          hsPercent,
+          mvps,
+          points: 0
+        };
+      };
+
+      const matchRows = [
+        ...sideA.map((pid) => makeRow(pid, 'Side A', sideAResult)),
+        ...sideB.map((pid) => makeRow(pid, 'Side B', sideBResult))
+      ].map((r) => ({ ...r, points: calculatePoints(r) }));
+      newRows.push(...matchRows);
+
+      if (Math.random() > 0.35) {
+        const attackerPlayerId = selected[Math.floor(Math.random() * selected.length)];
+        let victimPlayerId = selected[Math.floor(Math.random() * selected.length)];
+        if (victimPlayerId === attackerPlayerId) victimPlayerId = selected[(selected.indexOf(victimPlayerId) + 1) % selected.length];
+        knifeRows.push({
+          matchId: matchId as number,
+          attackerPlayerId,
+          victimPlayerId,
+          createdAt: new Date().toISOString()
+        });
+      }
+    }
+  }
+
+  await db.match_players.bulkAdd(newRows);
+  if (knifeRows.length) await db.knife_events.bulkAdd(knifeRows);
+  return { ok: true, matchdays: 5, matches: 20, rows: newRows.length };
+}
+
+async function clearDevStressData() {
+  const stressMatchDays = (await db.match_days.toArray()).filter((d) => (d.notes || '').includes('[STRESS]') || d.title.startsWith('Stress Matchday'));
+  const stressMatchDayIds = new Set(stressMatchDays.map((d) => d.id).filter((id): id is number => Number.isFinite(id)));
+  const stressMatches = (await db.matches.toArray()).filter((m) => (m.notes || '').includes('[STRESS]') || (m.matchDayId ? stressMatchDayIds.has(m.matchDayId) : false));
+  const stressMatchIds = new Set(stressMatches.map((m) => m.id).filter((id): id is number => Number.isFinite(id)));
+
+  const stressRowIds = (await db.match_players.toArray()).filter((r) => stressMatchIds.has(r.matchId)).map((r) => r.id).filter((id): id is number => Number.isFinite(id));
+  const stressKnifeIds = (await db.knife_events.toArray()).filter((k) => stressMatchIds.has(k.matchId)).map((k) => k.id).filter((id): id is number => Number.isFinite(id));
+
+  if (stressRowIds.length) await db.match_players.bulkDelete(stressRowIds);
+  if (stressKnifeIds.length) await db.knife_events.bulkDelete(stressKnifeIds);
+  if (stressMatchIds.size) await db.matches.bulkDelete([...stressMatchIds]);
+  if (stressMatchDayIds.size) await db.match_days.bulkDelete([...stressMatchDayIds]);
+
+  return { ok: true, removedMatches: stressMatchIds.size, removedMatchdays: stressMatchDayIds.size };
+}
 
 function AddOrEditMatch({ edit }: { edit?: Match }) {
   const nav = useNavigate();

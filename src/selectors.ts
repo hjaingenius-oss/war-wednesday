@@ -556,9 +556,9 @@ export function buildFunAwards(
     const candidates = [...playerMap.entries()]
       .map(([playerId, mapRows]) => {
         const mapAppearances = mapRows.length;
-        if (mapAppearances < 3) return null;
+        if (mapAppearances < 1) return null;
         const mapMatchValueAverage = average(mapRows.map((r) => calculateMatchValue(r, matchById.get(r.matchId), mapRows)));
-        const sampleMultiplier = mapAppearances >= 5 ? 1 : mapAppearances === 4 ? 0.95 : 0.9;
+        const sampleMultiplier = mapAppearances >= 5 ? 1 : mapAppearances === 4 ? 0.95 : mapAppearances === 3 ? 0.9 : mapAppearances === 2 ? 0.85 : 0.8;
         const mapDominanceScore = mapMatchValueAverage * sampleMultiplier;
         const wins = mapRows.filter((r) => r.result === 'WIN').length;
         const winPct = mapAppearances ? (wins / mapAppearances) * 100 : 0;
@@ -598,7 +598,7 @@ export function buildFunAwards(
       tooltip: 'Owns this map.',
       playerId: winner.playerId,
       playerName: nameOf(winner.playerId),
-      stat: `${fmt1(winner.mapMatchValueAverage)} MV avg`,
+      stat: `${fmt1(winner.mapMatchValueAverage)} Score avg`,
       appearances: winner.mapAppearances,
       dominanceScore: winner.mapDominanceScore,
       kd: winner.kd,
