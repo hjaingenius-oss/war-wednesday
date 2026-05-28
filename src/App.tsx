@@ -29,7 +29,7 @@ function receiptText(players: { id?: number; name: string }[], attackerId: numbe
 }
 
 function Layout({ children }: { children: React.ReactNode }) {
-  return <div className="shell"><header><h1>War Wednesday</h1><nav>{['/','/leaderboard','/matches','/players'].map((p,i)=><NavLink key={p} to={p}>{['Dashboard','Leaderboard','Match History','Players'][i]}</NavLink>)}{ADMIN_ENABLED && <NavLink to="/admin">Admin</NavLink>}</nav></header><main>{children}</main></div>;
+  return <div className="shell"><header><h1>War Wednesday</h1><nav>{['/','/leaderboard','/matches','/players','/stats'].map((p,i)=><NavLink key={p} to={p}>{['Dashboard','Leaderboard','Match History','Players','Stats'][i]}</NavLink>)}{ADMIN_ENABLED && <NavLink to="/admin">Admin</NavLink>}</nav></header><main>{children}</main></div>;
 }
 
 function useData() {
@@ -124,11 +124,11 @@ function Leaderboard() {
   const playerTitles = buildPlayerFunTitleMap(fun);
   return <div className="leaderboard-page"><div className="card"><h2>Leaderboard</h2><div className="actions"><select value={filter} onChange={(e)=>setFilter(e.target.value)}><option value="last10">Last 10 matches</option><option value="last20">Last 20 matches</option><option value="all">All matches</option></select></div>
   <div className="helper-grid"><p><b>War Rating</b><br/>Main skill-adjusted ranking score based on matchday performance, recency, and attendance.</p><p><b>Form</b><br/>Recent performance over the player's last 3 matchdays. * means small sample.</p><p><b>Total Points</b><br/>Raw accumulated points. Rewards volume and attendance.</p></div></div>
-  <section className="card"><h2>Main Ranked Board</h2><div className="table-wrap"><table><thead><tr><th>Rank</th><th>Player</th><th>War Rating</th><th>Form</th><th>Titles</th><th>Total Points</th><th>Attendance %</th><th>Matchdays Played</th><th>Matches Played</th><th>Win %</th><th>K/D</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>Knife Kills</th><th>Category</th></tr></thead><tbody>
-  {board.mainRows.map((r,i)=><tr key={r.playerId}><td><span className={`rank-chip rank-${i+1}`}>#{i+1}</span></td><td><NavLink to={`/players/${r.playerId}`}>{r.name}</NavLink></td><td className="war-cell">{fmt1(r.warRating)}</td><td><span className="form-cell">{fmt1(r.formRating)}{r.smallSample ? ' *' : ''}</span></td><td>{renderTitleChips(playerTitles.get(r.playerId) || [])}</td><td>{fmt(r.totalPoints)}</td><td>{pct(r.attendanceRate)}</td><td>{r.matchdaysPlayed}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{r.kd}</td><td>{r.kills}</td><td>{r.deaths}</td><td>{r.assists}</td><td>{r.knifeKills}</td><td><span className="category-badge">{r.category}</span></td></tr>)}
+  <section className="card"><h2>Main Ranked Board</h2><div className="table-wrap"><table><thead><tr><th>Rank</th><th>Player</th><th>War Rating</th><th>Form</th><th>Titles</th><th>Total Points</th><th>Matches Played</th><th>Win %</th><th>K/D</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>10+ K</th><th>20+ K</th><th>30+ K</th><th>Knife Kills</th></tr></thead><tbody>
+  {board.mainRows.map((r,i)=><tr key={r.playerId}><td><span className={`rank-chip rank-${i+1}`}>#{i+1}</span></td><td><NavLink to={`/players/${r.playerId}`}>{r.name}</NavLink></td><td className="war-cell">{fmt1(r.warRating)}</td><td><span className="form-cell">{fmt1(r.formRating)}{r.smallSample ? ' *' : ''}</span></td><td>{renderTitleChips(playerTitles.get(r.playerId) || [])}</td><td>{fmt(r.totalPoints)}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{r.kd}</td><td>{r.kills}</td><td>{r.deaths}</td><td>{r.assists}</td><td>{r.games10PlusKills}</td><td>{r.games20PlusKills}</td><td>{r.games30PlusKills}</td><td>{r.knifeKills}</td></tr>)}
   </tbody></table></div></section>
-  <section className="card"><h2>Impact Board</h2><p className="muted">Highlights strong low-attendance and small-sample players without affecting official ranks.</p><div className="table-wrap"><table><thead><tr><th>Category</th><th>Player</th><th>War Rating</th><th>Form</th><th>Titles</th><th>Total Points</th><th>Attendance %</th><th>Matchdays Played</th><th>Matches Played</th><th>Win %</th><th>K/D</th><th>Knife Kills</th><th>Comparison</th></tr></thead><tbody>
-  {board.impactRows.map((r)=><tr key={r.playerId}><td><span className="category-badge">{r.category}</span></td><td><NavLink to={`/players/${r.playerId}`}>{r.name}</NavLink></td><td className="war-cell">{fmt1(r.warRating)}</td><td><span className="form-cell">{fmt1(r.formRating)}{r.smallSample ? ' *' : ''}</span></td><td>{renderTitleChips(playerTitles.get(r.playerId) || [])}</td><td>{fmt(r.totalPoints)}</td><td>{pct(r.attendanceRate)}</td><td>{r.matchdaysPlayed}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{r.kd}</td><td>{r.knifeKills}</td><td><span className="comparison-badge">{r.comparisonBadge}</span></td></tr>)}
+  <section className="card"><h2>Impact Board</h2><p className="muted">Highlights strong low-attendance and small-sample players without affecting official ranks.</p><div className="table-wrap"><table><thead><tr><th>Player</th><th>War Rating</th><th>Form</th><th>Titles</th><th>Total Points</th><th>Matches Played</th><th>Win %</th><th>K/D</th><th>10+ K</th><th>20+ K</th><th>30+ K</th><th>Knife Kills</th><th>Comparison</th></tr></thead><tbody>
+  {board.impactRows.map((r)=><tr key={r.playerId}><td><NavLink to={`/players/${r.playerId}`}>{r.name}</NavLink></td><td className="war-cell">{fmt1(r.warRating)}</td><td><span className="form-cell">{fmt1(r.formRating)}{r.smallSample ? ' *' : ''}</span></td><td>{renderTitleChips(playerTitles.get(r.playerId) || [])}</td><td>{fmt(r.totalPoints)}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{r.kd}</td><td>{r.games10PlusKills}</td><td>{r.games20PlusKills}</td><td>{r.games30PlusKills}</td><td>{r.knifeKills}</td><td><span className="comparison-badge">{r.comparisonBadge}</span></td></tr>)}
   </tbody></table></div></section></div>;
 }
 
@@ -161,6 +161,90 @@ function MatchDetail() {
     {mk.length > 0 && <div className="receipts-board inline-receipts"><div className="receipts-head"><span>Knife Board</span><strong>{mk.length}</strong></div>{mk.map((k, i)=><div className="receipt-card" key={k.id}><span>#{i + 1}</span><b>{receiptText(players, k.attackerPlayerId, k.victimPlayerId)}</b></div>)}</div>}
     <div className="helper-grid"><p><b>Highest Match Value</b><br/>{mr.find((r)=>calculateMatchValue(r)===topMatchValue) ? `${playerName(players, mr.find((r)=>calculateMatchValue(r)===topMatchValue)!.playerId)} (${fmt1(topMatchValue)})` : '-'}</p><p><b>Top Fragger</b><br/>{mr.find((r)=>r.kills===topKills) ? `${playerName(players, mr.find((r)=>r.kills===topKills)!.playerId)} (${topKills})` : '-'}</p><p><b>Best K/D</b><br/>{mr.find((r)=>safeKD(r.kills,r.deaths)===topKd) ? `${playerName(players, mr.find((r)=>safeKD(r.kills,r.deaths)===topKd)!.playerId)} (${topKd})` : '-'}</p></div>
     {teams.map((t)=><div key={t}><h3>{t}</h3><div className="table-wrap"><table><thead><tr><th>Player</th><th>K</th><th>D</th><th>A</th><th>Total Points</th><th>Match Value</th></tr></thead><tbody>{mr.filter((r)=>r.team===t).map((r)=><tr key={r.id} className={[calculateMatchValue(r)===topMatchValue ? 'highlight-value' : '', r.kills===topKills ? 'highlight-kills' : '', safeKD(r.kills,r.deaths)===topKd ? 'highlight-kd' : ''].join(' ')}><td>{players.find((p)=>p.id===r.playerId)?.name}</td><td>{r.kills}</td><td>{r.deaths}</td><td>{r.assists}</td><td>{fmt(calculateTotalPointsForMatch(r))}</td><td className="war-cell">{fmt1(calculateMatchValue(r))}</td></tr>)}</tbody></table></div></div>)}
+  </div>;
+}
+
+function StatsPage() {
+  const { players, rows, matches, matchDays, knifeEvents } = useData();
+  const board = buildLeaderboardRows(players, matchDays, matches, rows, knifeEvents, 'all');
+  const activeRows = board.allRows.filter((r) => r.matchesPlayed > 0);
+  const matchById = new Map(matches.map((m) => [m.id, m]));
+  const playerById = new Map(players.map((p) => [p.id, p.name]));
+  const nameOf = (id: number) => playerById.get(id) || 'Unknown';
+
+  const killRateBoard = [...activeRows]
+    .sort((a, b) => (b.matchesPlayed ? b.kills / b.matchesPlayed : 0) - (a.matchesPlayed ? a.kills / a.matchesPlayed : 0))
+    .slice(0, 5);
+  const totalKillsBoard = [...activeRows].sort((a, b) => b.kills - a.kills).slice(0, 5);
+  const bestMatchValueRows = [...rows].sort((a, b) => calculateMatchValue(b) - calculateMatchValue(a)).slice(0, 5);
+  const bestKillRows = [...rows].sort((a, b) => b.kills - a.kills).slice(0, 5);
+
+  const iconicMatches = [...matches]
+    .map((m) => {
+      const mr = rows.filter((r) => r.matchId === m.id);
+      const totalKills = mr.reduce((acc, r) => acc + r.kills, 0);
+      const avgMatchValue = mr.length ? mr.reduce((acc, r) => acc + calculateMatchValue(r), 0) / mr.length : 0;
+      const knifeCount = knifeEvents.filter((k) => k.matchId === m.id).length;
+      const closeness = Math.abs((m.teamAScore || 0) - (m.teamBScore || 0));
+      const iconicScore = totalKills + avgMatchValue * 0.7 + knifeCount * 8 - closeness * 1.5;
+      return { match: m, totalKills, avgMatchValue, knifeCount, iconicScore };
+    })
+    .sort((a, b) => b.iconicScore - a.iconicScore)
+    .slice(0, 5);
+
+  const knifeByAttackerVictim = new Map<string, { attackerId: number; victimId: number; count: number }>();
+  for (const k of knifeEvents) {
+    const key = `${k.attackerPlayerId}-${k.victimPlayerId}`;
+    const curr = knifeByAttackerVictim.get(key);
+    knifeByAttackerVictim.set(key, {
+      attackerId: k.attackerPlayerId,
+      victimId: k.victimPlayerId,
+      count: (curr?.count || 0) + 1
+    });
+  }
+  const rivalryBoard = [...knifeByAttackerVictim.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+
+  const mapRecords = [...matches].reduce((acc, m) => {
+    if (!m.id) return acc;
+    const mr = rows.filter((r) => r.matchId === m.id);
+    const top = mr.sort((a, b) => b.kills - a.kills)[0];
+    if (!top) return acc;
+    const existing = acc.get(m.map);
+    if (!existing || top.kills > existing.kills) {
+      acc.set(m.map, { map: m.map, playerId: top.playerId, kills: top.kills, matchId: m.id });
+    }
+    return acc;
+  }, new Map<string, { map: string; playerId: number; kills: number; matchId: number }>());
+
+  const hottestMatchday = [...matchDays].map((d) => {
+    const dayMatches = matches.filter((m) => m.matchDayId === d.id);
+    const dayIds = new Set(dayMatches.map((m) => m.id));
+    const dayRows = rows.filter((r) => dayIds.has(r.matchId));
+    const dayKills = dayRows.reduce((acc, r) => acc + r.kills, 0);
+    return { day: d, dayKills, matchCount: dayMatches.length };
+  }).sort((a, b) => b.dayKills - a.dayKills)[0];
+
+  return <div className="leaderboard-page">
+    <section className="card">
+      <h2>Stats Center</h2>
+      <p className="muted">League records, iconic games, kill milestones, and rivalry history.</p>
+    </section>
+    <section className="grid2">
+      <div className="card"><h3>High Kill Rate</h3>{killRateBoard.map((r, i) => <div className="row" key={r.playerId}><span>{i + 1}. {r.name}</span><span>{fmt1(r.kills / Math.max(1, r.matchesPlayed))} kills/match</span></div>)}</div>
+      <div className="card"><h3>Total Kills Leaderboard</h3>{totalKillsBoard.map((r, i) => <div className="row" key={r.playerId}><span>{i + 1}. {r.name}</span><span>{r.kills} kills</span></div>)}</div>
+    </section>
+    <section className="grid2">
+      <div className="card"><h3>Best Single Match Value</h3>{bestMatchValueRows.map((r, i) => <div className="row" key={r.id}><span>{i + 1}. {nameOf(r.playerId)} / {matchById.get(r.matchId)?.map}</span><span>{fmt1(calculateMatchValue(r))} MV</span></div>)}</div>
+      <div className="card"><h3>Highest Kill Games</h3>{bestKillRows.map((r, i) => <div className="row" key={r.id}><span>{i + 1}. {nameOf(r.playerId)} / {matchById.get(r.matchId)?.map}</span><span>{r.kills} kills</span></div>)}</div>
+    </section>
+    <section className="grid2">
+      <div className="card"><h3>Iconic Matches</h3>{iconicMatches.map((m, i) => <div className="row" key={m.match.id}><span>{i + 1}. {m.match.map} ({m.match.date})</span><span>{m.totalKills} K / {m.knifeCount} knifes</span></div>)}</div>
+      <div className="card"><h3>Rivalry Record</h3>{rivalryBoard.length === 0 ? <p className="muted">No knife events yet.</p> : rivalryBoard.map((r, i) => <div className="row" key={`${r.attackerId}-${r.victimId}`}><span>{i + 1}. {nameOf(r.attackerId)} knifed {nameOf(r.victimId)}</span><span>{r.count} times</span></div>)}</div>
+    </section>
+    <section className="grid2">
+      <div className="card"><h3>Map Kill Records</h3>{[...mapRecords.values()].sort((a, b) => a.map.localeCompare(b.map)).map((r) => <div className="row" key={r.map}><span>{r.map}</span><span>{nameOf(r.playerId)} ({r.kills})</span></div>)}</div>
+      <div className="card"><h3>Hottest Matchday</h3>{hottestMatchday ? <div><p><b>{hottestMatchday.day.title}</b> / {hottestMatchday.day.eventDate}</p><p>{hottestMatchday.dayKills} total kills across {hottestMatchday.matchCount} matches</p></div> : <p className="muted">No matchday data yet.</p>}</div>
+    </section>
   </div>;
 }
 
@@ -336,6 +420,7 @@ export default function App() {
     <Route path="/matches/:id" element={<MatchDetail />} />
     <Route path="/players" element={<Players />} />
     <Route path="/players/:id" element={<PlayerProfile />} />
+    <Route path="/stats" element={<StatsPage />} />
     <Route path="/admin" element={<AdminGate />} />
     <Route path="/admin/add-match" element={<AddOrEditMatch />} />
     <Route path="/admin/edit-match/:id" element={<EditMatchPage />} />
