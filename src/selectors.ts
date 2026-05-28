@@ -39,6 +39,7 @@ export type FunAwardKey =
   | 'assassin'
   | 'knifeArtist'
   | 'knifeVictim'
+  | 'survivor'
   | 'wildcard'
   | 'consistentPerformer';
 
@@ -71,54 +72,32 @@ export interface FunAwardsResult {
 
 export function calculateTotalPointsForMatch(row: Pick<MatchPlayer, 'result' | 'kills' | 'assists' | 'deaths'>) {
   const resultPoints = row.result === 'WIN' ? 5 : row.result === 'DRAW' ? 3 : 1;
-  return resultPoints + safeNumber(row.kills) + safeNumber(row.assists) * 0.5 - safeNumber(row.deaths) * 0.5;
+  const damagePart = safeNumber((row as MatchPlayer).damage) ? safeNumber((row as MatchPlayer).damage) / 250 : 0;
+  return resultPoints + safeNumber(row.kills) + safeNumber(row.assists) * 0.5 - safeNumber(row.deaths) * 0.5 + damagePart;
 }
 
 export function calculateMatchValue(
-  row: Pick<MatchPlayer, 'result' | 'kills' | 'assists' | 'deaths' | 'playerId'>,
-  matchRows: Array<Pick<MatchPlayer, 'result' | 'kills' | 'assists' | 'deaths' | 'playerId' | 'team'>> = []
+  row: Pick<MatchPlayer, 'result' | 'kills' | 'deaths' | 'assists' | 'damage' | 'hsPercent' | 'playerId'>,
+  match?: Pick<Match, 'teamAScore' | 'teamBScore'>,
+  _matchRows: Array<Pick<MatchPlayer, 'result' | 'kills' | 'assists' | 'deaths' | 'playerId' | 'team'>> = []
 ) {
+  const roundsPlayed = Math.max(0, safeNumber(match?.teamAScore) + safeNumber(match?.teamBScore));
   const kills = safeNumber(row.kills);
   const deaths = safeNumber(row.deaths);
   const assists = safeNumber(row.assists);
-  const kd = safeKD(kills, deaths);
-  const combatScore = kills + assists * 0.5 - deaths * 0.65;
-  const resultBonus = row.result === 'WIN' ? 3 : row.result === 'DRAW' ? 1.5 : 0;
-  const kdBonus = kd >= 2 ? 6 : kd >= 1.5 ? 4 : kd >= 1 ? 2 : 0;
-  const killMilestoneBonus = kills >= 30 ? 8 : kills >= 20 ? 5 : kills >= 10 ? 2 : 0;
-  const preResultScore = 50 + combatScore + kdBonus + killMilestoneBonus;
-
-  let losingCarryBonus = 0;
-  if (row.result === 'LOSS' && matchRows.length) {
-    const maxKills = Math.max(...matchRows.map((r) => safeNumber(r.kills)));
-    const maxPreResultScore = Math.max(...matchRows.map((r) => {
-      const rk = safeNumber(r.kills);
-      const rd = safeNumber(r.deaths);
-      const ra = safeNumber(r.assists);
-      const rkd = safeKD(rk, rd);
-      const rCombat = rk + ra * 0.5 - rd * 0.65;
-      const rKdBonus = rkd >= 2 ? 6 : rkd >= 1.5 ? 4 : rkd >= 1 ? 2 : 0;
-      const rKillMilestoneBonus = rk >= 30 ? 8 : rk >= 20 ? 5 : rk >= 10 ? 2 : 0;
-      return 50 + rCombat + rKdBonus + rKillMilestoneBonus;
-    }));
-    if (kills >= maxKills) losingCarryBonus += 3;
-    if (preResultScore >= maxPreResultScore) losingCarryBonus += 3;
-    if (kd >= 1.5) losingCarryBonus += 2;
-    losingCarryBonus = Math.min(5, losingCarryBonus);
-  }
-
-  let lowImpactWinAdjustment = 0;
-  if (row.result === 'WIN' && matchRows.length) {
-    const myRow = matchRows.find((r) => r.playerId === row.playerId);
-    const myTeam = myRow?.team;
-    if (myTeam) {
-      const myTeamRows = matchRows.filter((r) => r.team === myTeam);
-      const teamAverageKills = average(myTeamRows.map((r) => safeNumber(r.kills)));
-      if (kd < 0.75 && kills < teamAverageKills) lowImpactWinAdjustment = -2;
-    }
-  }
-
-  return Math.max(0, 50 + combatScore + kdBonus + killMilestoneBonus + resultBonus + losingCarryBonus + lowImpactWinAdjustment);
+  const kd = kills / Math.max(deaths, 1);
+  const damage = safeNumber((row as MatchPlayer).damage);
+  const hsPercent = safeNumber((row as MatchPlayer).hsPercent);
+  const adr = roundsPlayed > 0 ? damage / roundsPlayed : 0;
+  const kpr = roundsPlayed > 0 ? kills / roundsPlayed : 0;
+  const apr = roundsPlayed > 0 ? assists / roundsPlayed : 0;
+  const damageScore = Math.min(100, (adr / 110) * 100);
+  const killScore = Math.min(100, (kpr / 0.9) * 100);
+  const kdScore = Math.min(100, (kd / 1.6) * 100);
+  const assistScore = Math.min(100, (apr / 0.35) * 100);
+  const headshotScore = hsPercent;
+  const resultScore = row.result === 'WIN' ? 100 : row.result === 'DRAW' ? 50 : 0;
+  return (0.35 * damageScore) + (0.25 * killScore) + (0.20 * kdScore) + (0.10 * assistScore) + (0.05 * headshotScore) + (0.05 * resultScore);
 }
 
 export function getMatchWindow(matches: Match[], filter: string) {
@@ -165,7 +144,7 @@ export function calculateMatchdayScores(
     if (!byPlayer.has(row.playerId)) byPlayer.set(row.playerId, new Map());
     const playerDays = byPlayer.get(row.playerId)!;
     const values = playerDays.get(matchDayId) || [];
-    values.push(calculateMatchValue(row, rowsByMatchId.get(row.matchId) || []));
+    values.push(calculateMatchValue(row, match, rowsByMatchId.get(row.matchId) || []));
     playerDays.set(matchDayId, values);
   }
 
@@ -274,12 +253,14 @@ export function buildLeaderboardRows(
     .sort((a, b) => b.eventDate.localeCompare(a.eventDate));
 
   const matchdayScores = calculateMatchdayScores(players, windowMatchDays, windowMatches, windowRows);
+  const matchById = new Map(windowMatches.map((m) => [m.id, m]));
   const baseRows = players.map((player) => buildPlayerRow(
     player,
     windowRows,
     windowKnifeEvents,
     matchdayScores.get(player.id || 0) || [],
-    windowMatchDays
+    windowMatchDays,
+    matchById
   ));
 
   const prelimRegulars = baseRows.filter((r) => r.matchdaysPlayed > 0 && (r.attendanceRate >= 0.5 || r.matchdaysPlayed >= 5));
@@ -320,6 +301,7 @@ export function buildFunAwards(
   const windowMatchIds = new Set(windowMatches.map((m) => m.id));
   const windowRows = rows.filter((r) => windowMatchIds.has(r.matchId));
   const rowsByPlayer = new Map<number, MatchPlayer[]>();
+  const rowsByMatchId = new Map<number, MatchPlayer[]>();
   const matchById = new Map(windowMatches.map((m) => [m.id, m]));
   const boardByPlayer = new Map(leaderboardRows.map((r) => [r.playerId, r]));
   const nameOf = (id: number) => players.find((p) => p.id === id)?.name || 'Unknown';
@@ -328,6 +310,9 @@ export function buildFunAwards(
     const playerRows = rowsByPlayer.get(row.playerId) || [];
     playerRows.push(row);
     rowsByPlayer.set(row.playerId, playerRows);
+    const byMatch = rowsByMatchId.get(row.matchId) || [];
+    byMatch.push(row);
+    rowsByMatchId.set(row.matchId, byMatch);
   }
 
   const active = leaderboardRows.filter((r) => r.matchesPlayed > 0);
@@ -338,6 +323,10 @@ export function buildFunAwards(
   const eligibleConsistent = active.filter(
     (r) => r.matchdaysPlayed >= 3 && regularMedianWar !== undefined && r.warRating >= regularMedianWar
   );
+  const playerWarLiteAvg = (playerId: number) => {
+    const pr = rowsByPlayer.get(playerId) || [];
+    return average(pr.map((x) => calculateMatchValue(x, matchById.get(x.matchId), rowsByMatchId.get(x.matchId) || [])));
+  };
 
   const awardWinners: FunAwardWinner[] = [];
   const addAward = (award?: FunAwardWinner) => {
@@ -346,7 +335,11 @@ export function buildFunAwards(
 
   const assistHero = pickBest(
     eligibleCore,
-    (r) => (r.matchesPlayed ? r.assists / r.matchesPlayed : 0),
+    (r) => {
+      const pr = rowsByPlayer.get(r.playerId) || [];
+      const rounds = sum(pr.map((x) => safeNumber(matchById.get(x.matchId)?.teamAScore) + safeNumber(matchById.get(x.matchId)?.teamBScore)));
+      return rounds > 0 ? r.assists / rounds : (r.matchesPlayed ? r.assists / r.matchesPlayed : 0);
+    },
     [
       (r) => r.assists,
       (r) => r.warRating,
@@ -359,12 +352,16 @@ export function buildFunAwards(
     tooltip: 'Making everyone else look good.',
     playerId: assistHero.playerId,
     playerName: assistHero.name,
-    stat: `${fmt1(assistHero.assists / Math.max(1, assistHero.matchesPlayed))} assists/match`
+    stat: `${fmt1(assistHero.assists / Math.max(1, (sum((rowsByPlayer.get(assistHero.playerId) || []).map((x) => safeNumber(matchById.get(x.matchId)?.teamAScore) + safeNumber(matchById.get(x.matchId)?.teamBScore))) || assistHero.matchesPlayed)))} assists/round`
   });
 
   const assassin = pickBest(
     eligibleCore,
-    (r) => (r.matchesPlayed ? r.kills / r.matchesPlayed : 0),
+    (r) => {
+      const pr = rowsByPlayer.get(r.playerId) || [];
+      const rounds = sum(pr.map((x) => safeNumber(matchById.get(x.matchId)?.teamAScore) + safeNumber(matchById.get(x.matchId)?.teamBScore)));
+      return rounds > 0 ? r.kills / rounds : (r.matchesPlayed ? r.kills / r.matchesPlayed : 0);
+    },
     [
       (r) => r.kills,
       (r) => r.kd,
@@ -377,7 +374,7 @@ export function buildFunAwards(
     tooltip: 'Highest kill rate in the lobby.',
     playerId: assassin.playerId,
     playerName: assassin.name,
-    stat: `${fmt1(assassin.kills / Math.max(1, assassin.matchesPlayed))} kills/match`
+    stat: `${fmt1(assassin.kills / Math.max(1, (sum((rowsByPlayer.get(assassin.playerId) || []).map((x) => safeNumber(matchById.get(x.matchId)?.teamAScore) + safeNumber(matchById.get(x.matchId)?.teamBScore))) || assassin.matchesPlayed)))} kills/round`
   });
 
   const knifeArtist = pickBest(
@@ -412,6 +409,33 @@ export function buildFunAwards(
     playerId: knifeVictim.playerId,
     playerName: knifeVictim.name,
     stat: `${knifeVictim.knifeDeaths} times knifed`
+  });
+
+  const survivorPool = active.filter((r) => r.matchdaysPlayed >= 3 || r.category === 'Regular');
+  const survivor = pickBest(
+    survivorPool,
+    (r) => {
+      const pr = rowsByPlayer.get(r.playerId) || [];
+      const rounds = sum(pr.map((x) => safeNumber(matchById.get(x.matchId)?.teamAScore) + safeNumber(matchById.get(x.matchId)?.teamBScore)));
+      if (rounds <= 0) return -Infinity;
+      return -(r.deaths / rounds);
+    },
+    [
+      (r) => playerWarLiteAvg(r.playerId),
+      (r) => r.attendanceRate,
+      (r) => {
+        const pr = rowsByPlayer.get(r.playerId) || [];
+        return sum(pr.map((x) => safeNumber(matchById.get(x.matchId)?.teamAScore) + safeNumber(matchById.get(x.matchId)?.teamBScore)));
+      }
+    ]
+  );
+  addAward(survivor && {
+    key: 'survivor',
+    label: 'Survivor',
+    tooltip: 'Hardest player to remove from the server.',
+    playerId: survivor.playerId,
+    playerName: survivor.name,
+    stat: `${fmt1(survivor.deaths / Math.max(1, sum((rowsByPlayer.get(survivor.playerId) || []).map((x) => safeNumber(matchById.get(x.matchId)?.teamAScore) + safeNumber(matchById.get(x.matchId)?.teamBScore)))))} deaths/round`
   });
 
   const wildcard = pickBest(
@@ -467,7 +491,7 @@ export function buildFunAwards(
       .map(([playerId, mapRows]) => {
         const mapAppearances = mapRows.length;
         if (mapAppearances < 3) return null;
-        const mapMatchValueAverage = average(mapRows.map((r) => calculateMatchValue(r, mapRows)));
+        const mapMatchValueAverage = average(mapRows.map((r) => calculateMatchValue(r, matchById.get(r.matchId), mapRows)));
         const sampleMultiplier = mapAppearances >= 5 ? 1 : mapAppearances === 4 ? 0.95 : 0.9;
         const mapDominanceScore = mapMatchValueAverage * sampleMultiplier;
         const wins = mapRows.filter((r) => r.result === 'WIN').length;
@@ -545,7 +569,8 @@ function buildPlayerRow(
   rows: MatchPlayer[],
   knifeEvents: KnifeEvent[],
   matchdayScores: PlayerLeaderboardRow['matchdayScores'],
-  windowMatchDays: MatchDay[]
+  windowMatchDays: MatchDay[],
+  matchById: Map<number | undefined, Match>
 ): PlayerLeaderboardRow {
   const rowsByMatchId = new Map<number, MatchPlayer[]>();
   for (const row of rows) {
@@ -596,7 +621,7 @@ function buildPlayerRow(
     games30PlusKills: playerRows.filter((r) => safeNumber(r.kills) >= 30).length,
     kd: safeKD(kills, deaths),
     avgPoints: matchesPlayed ? totalPoints / matchesPlayed : 0,
-    bestMatchValue: playerRows.length ? Math.max(...playerRows.map((r) => calculateMatchValue(r, rowsByMatchId.get(r.matchId) || []))) : 0,
+    bestMatchValue: playerRows.length ? Math.max(...playerRows.map((r) => calculateMatchValue(r, matchById.get(r.matchId), rowsByMatchId.get(r.matchId) || []))) : 0,
     matchdayScores
   };
 }
@@ -665,14 +690,23 @@ export function getKnifeBoard(players: Player[], knifeEvents: KnifeEvent[], matc
 export function getAllTimeRecords(players: Player[], rows: MatchPlayer[], matches: Match[], knifeEvents: KnifeEvent[], matchDisplayIds: Map<number, string>) {
   const playerNameById = new Map(players.map((p) => [p.id, p.name]));
   const rowsByMatchId = new Map<number, MatchPlayer[]>();
+  const matchById = new Map(matches.map((m) => [m.id, m]));
   for (const row of rows) {
     const arr = rowsByMatchId.get(row.matchId) || [];
     arr.push(row);
     rowsByMatchId.set(row.matchId, arr);
   }
-  const bestMatchValueRow = [...rows].sort((a, b) => calculateMatchValue(b, rowsByMatchId.get(b.matchId) || []) - calculateMatchValue(a, rowsByMatchId.get(a.matchId) || []))[0];
+  const bestMatchValueRow = [...rows].sort((a, b) => calculateMatchValue(b, matchById.get(b.matchId), rowsByMatchId.get(b.matchId) || []) - calculateMatchValue(a, matchById.get(a.matchId), rowsByMatchId.get(a.matchId) || []))[0];
   const mostKillsRow = [...rows].sort((a, b) => safeNumber(b.kills) - safeNumber(a.kills))[0];
   const mostAssistsRow = [...rows].sort((a, b) => safeNumber(b.assists) - safeNumber(a.assists))[0];
+  const highestDamageRow = [...rows].sort((a, b) => safeNumber((b as MatchPlayer).damage) - safeNumber((a as MatchPlayer).damage))[0];
+  const bestAdrRow = [...rows].sort((a, b) => {
+    const am = matchById.get(a.matchId);
+    const bm = matchById.get(b.matchId);
+    const ar = Math.max(1, safeNumber(am?.teamAScore) + safeNumber(am?.teamBScore));
+    const br = Math.max(1, safeNumber(bm?.teamAScore) + safeNumber(bm?.teamBScore));
+    return (safeNumber((b as MatchPlayer).damage) / br) - (safeNumber((a as MatchPlayer).damage) / ar);
+  })[0];
   const bestKdRow = [...rows]
     .filter((r) => safeNumber(r.kills) >= 10)
     .sort((a, b) => safeKD(b.kills, b.deaths) - safeKD(a.kills, a.deaths))[0];
@@ -694,6 +728,8 @@ export function getAllTimeRecords(players: Player[], rows: MatchPlayer[], matche
     bestMatchValue: withMeta(bestMatchValueRow),
     mostKills: withMeta(mostKillsRow),
     mostAssists: withMeta(mostAssistsRow),
+    highestDamage: withMeta(highestDamageRow),
+    bestAdr: withMeta(bestAdrRow),
     bestKd: withMeta(bestKdRow),
     knifeArtist,
     knifeVictim
@@ -703,11 +739,13 @@ export function getAllTimeRecords(players: Player[], rows: MatchPlayer[], matche
 export function getMatchdayMoments(
   players: Player[],
   rows: MatchPlayer[],
+  matches: Match[],
   knifeEvents: KnifeEvent[],
   matchDisplayIds: Map<number, string>
 ) {
   const nameOf = (id: number) => players.find((p) => p.id === id)?.name || 'Unknown';
   const rowsByMatchId = new Map<number, MatchPlayer[]>();
+  const matchById = new Map(matches.map((m) => [m.id, m]));
   for (const row of rows) {
     const arr = rowsByMatchId.get(row.matchId) || [];
     arr.push(row);
@@ -717,8 +755,8 @@ export function getMatchdayMoments(
   const moments: string[] = [];
   const topKillsRow = [...recentRows].sort((a, b) => b.kills - a.kills)[0];
   if (topKillsRow) moments.push(`${nameOf(topKillsRow.playerId)} dropped ${topKillsRow.kills} kills in ${getMatchDisplayId(topKillsRow.matchId, matchDisplayIds)}.`);
-  const topMvRow = [...recentRows].sort((a, b) => calculateMatchValue(b, rowsByMatchId.get(b.matchId) || []) - calculateMatchValue(a, rowsByMatchId.get(a.matchId) || []))[0];
-  if (topMvRow) moments.push(`${nameOf(topMvRow.playerId)} posted the best Match Value of the night: ${fmt1(calculateMatchValue(topMvRow, rowsByMatchId.get(topMvRow.matchId) || []))}.`);
+  const topMvRow = [...recentRows].sort((a, b) => calculateMatchValue(b, matchById.get(b.matchId), rowsByMatchId.get(b.matchId) || []) - calculateMatchValue(a, matchById.get(a.matchId), rowsByMatchId.get(a.matchId) || []))[0];
+  if (topMvRow) moments.push(`${nameOf(topMvRow.playerId)} posted the best WAR Lite of the night: ${fmt1(calculateMatchValue(topMvRow, matchById.get(topMvRow.matchId), rowsByMatchId.get(topMvRow.matchId) || []))}.`);
   const topAssistRow = [...recentRows].sort((a, b) => b.assists - a.assists)[0];
   if (topAssistRow) moments.push(`${nameOf(topAssistRow.playerId)} was Assist Hero this matchday with ${topAssistRow.assists} assists.`);
   const latestKnife = [...knifeEvents].sort((a, b) => (b.id || 0) - (a.id || 0))[0];

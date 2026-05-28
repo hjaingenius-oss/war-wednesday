@@ -70,7 +70,11 @@ function Dashboard() {
     }
     return m;
   }, [rows]);
-  const bestPerf = [...rows].sort((a,b)=>calculateMatchValue(b, rowsByMatchId.get(b.matchId) || [])-calculateMatchValue(a, rowsByMatchId.get(a.matchId) || []))[0];
+  const bestPerf = [...rows].sort((a,b)=>{
+    const bm = matches.find((m)=>m.id===b.matchId);
+    const am = matches.find((m)=>m.id===a.matchId);
+    return calculateMatchValue(b, bm, rowsByMatchId.get(b.matchId) || [])-calculateMatchValue(a, am, rowsByMatchId.get(a.matchId) || []);
+  })[0];
   const latestDay = matchDays[matchDays.length - 1];
   const leagueYear = latestDay?.eventDate.slice(0, 4) || String(new Date().getFullYear());
   const latestDayMatches = latestDay ? matches.filter((m) => m.matchDayId === latestDay.id) : [];
@@ -83,7 +87,7 @@ function Dashboard() {
         <div className="headline-stat">
           <span>League Leader</span>
           <strong>{leagueLeader?.name || 'TBD'}</strong>
-          <small>{leagueLeader ? `${fmt1(leagueLeader.warRating)} War Rating` : 'No Regulars yet'}</small>
+          <small>{leagueLeader ? `${fmt1(leagueLeader.warRating)} WAR Lite` : 'No Regulars yet'}</small>
         </div>
         <div className="score-strip">
           {latestDayMatches.slice(0, 4).map((m) => <NavLink to={`/matches/${m.id}`} key={m.id}><span>Match ID: {getMatchDisplayId(m.id, matchDisplayIds)}</span><b>{m.teamAScore}-{m.teamBScore}</b></NavLink>)}
@@ -125,7 +129,7 @@ function Dashboard() {
       <div className="card stat kpi"><h3>Most Knife Kills</h3><p>{topKnifer ? `${topKnifer.name} (${topKnifer.knifeKills})` : '-'}</p></div>
       <div className="card stat kpi"><h3>In Form</h3><p>{inForm ? `${inForm.name} (${fmt1(inForm.formRating)})` : '-'}</p></div>
       <div className="card stat kpi"><h3>Top Impact Player</h3><p>{topImpact ? `${topImpact.name} (${fmt1(topImpact.warRating)})` : '-'}</p></div>
-      <div className="card stat kpi"><h3>Best Single Match</h3><p>{bestPerf ? `${name(bestPerf.playerId)} (${fmt1(calculateMatchValue(bestPerf, rowsByMatchId.get(bestPerf.matchId) || []))})` : '-'}</p></div>
+      <div className="card stat kpi"><h3>Best Single Match</h3><p>{bestPerf ? `${name(bestPerf.playerId)} (${fmt1(calculateMatchValue(bestPerf, matches.find((m)=>m.id===bestPerf.matchId), rowsByMatchId.get(bestPerf.matchId) || []))})` : '-'}</p></div>
     </section>
     <section className="grid2"><div className="card"><h3>Top 5 Main Ranked Board</h3>{leaderboard.mainRows.slice(0,5).map((r,i)=><div className="row" key={r.playerId}><span className={`rank-chip rank-${i+1}`}>{rank[i] || `Rank #${i+1}`}</span><span>{r.name}</span><span>{fmt1(r.warRating)} WR</span></div>)}</div>
     <div className="card"><h3>Top 3 Impact Board</h3>{leaderboard.impactRows.slice(0,3).map((r)=><div className="row" key={r.playerId}><span className="category-badge">{r.category}</span><span>{r.name}</span><span>{fmt1(r.warRating)} WR</span></div>)}</div></section>
@@ -139,11 +143,11 @@ function Leaderboard() {
   const fun = buildFunAwards(players, rows, matches, board.allRows, filter);
   const playerTitles = buildPlayerFunTitleMap(fun);
   return <div className="leaderboard-page"><div className="card"><h2>Leaderboard</h2><div className="actions"><select value={filter} onChange={(e)=>setFilter(e.target.value)}><option value="last10">Last 10 matches</option><option value="last20">Last 20 matches</option><option value="all">All matches</option></select></div>
-  <div className="helper-grid"><p><b>War Rating</b><br/>Main skill-adjusted ranking score based on matchday performance, recency, and attendance. Team result has limited impact.</p><p><b>Form</b><br/>Recent performance over the player's last 3 matchdays. * means small sample.</p><p><b>Total Points</b><br/>Raw accumulated points. Rewards volume and gives a small bonus for team result.</p></div></div>
-  <section className="card"><h2>Main Ranked Board</h2><div className="table-wrap"><table><thead><tr><th>Rank</th><th>Player</th><th>War Rating</th><th>Form</th><th>Titles</th><th>Total Points</th><th>Matches Played</th><th>Win %</th><th>K/D</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>10+ K</th><th>20+ K</th><th>30+ K</th><th>Knife Kills</th></tr></thead><tbody>
+  <div className="helper-grid"><p><b>WAR Lite</b><br/>Scoreboard-based player rating using damage, kills, survival, assists, headshots, and a small result bonus.</p><p><b>Form</b><br/>Recent performance over the player's last 3 matchdays. * means small sample.</p><p><b>Total Points</b><br/>Raw accumulated points. Rewards volume and gives a small bonus for team result.</p></div></div>
+  <section className="card"><h2>Main Ranked Board</h2><div className="table-wrap"><table><thead><tr><th>Rank</th><th>Player</th><th>WAR Lite</th><th>Form</th><th>Titles</th><th>Total Points</th><th>Matches Played</th><th>Win %</th><th>K/D</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>10+ K</th><th>20+ K</th><th>30+ K</th><th>Knife Kills</th></tr></thead><tbody>
   {board.mainRows.map((r,i)=><tr key={r.playerId}><td><span className={`rank-chip rank-${i+1}`}>{`Rank #${i+1}`}</span></td><td><NavLink to={`/players/${r.playerId}`}>{r.name}</NavLink></td><td className="war-cell">{fmt1(r.warRating)}</td><td><span className="form-cell">{fmt1(r.formRating)}{r.smallSample ? ' *' : ''}</span></td><td>{renderTitleChips(playerTitles.get(r.playerId) || [])}</td><td>{fmt(r.totalPoints)}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{r.kd}</td><td>{r.kills}</td><td>{r.deaths}</td><td>{r.assists}</td><td>{r.games10PlusKills}</td><td>{r.games20PlusKills}</td><td>{r.games30PlusKills}</td><td>{r.knifeKills}</td></tr>)}
   </tbody></table></div></section>
-  <section className="card"><h2>Impact Board</h2><p className="muted">Highlights strong low-attendance and small-sample players without affecting official ranks.</p><div className="table-wrap"><table><thead><tr><th>Player</th><th>War Rating</th><th>Form</th><th>Titles</th><th>Total Points</th><th>Matches Played</th><th>Win %</th><th>K/D</th><th>10+ K</th><th>20+ K</th><th>30+ K</th><th>Knife Kills</th><th>Comparison</th></tr></thead><tbody>
+  <section className="card"><h2>Impact Board</h2><p className="muted">Highlights strong low-attendance and small-sample players without affecting official ranks.</p><div className="table-wrap"><table><thead><tr><th>Player</th><th>WAR Lite</th><th>Form</th><th>Titles</th><th>Total Points</th><th>Matches Played</th><th>Win %</th><th>K/D</th><th>10+ K</th><th>20+ K</th><th>30+ K</th><th>Knife Kills</th><th>Comparison</th></tr></thead><tbody>
   {board.impactRows.map((r)=><tr key={r.playerId}><td><NavLink to={`/players/${r.playerId}`}>{r.name}</NavLink></td><td className="war-cell">{fmt1(r.warRating)}</td><td><span className="form-cell">{fmt1(r.formRating)}{r.smallSample ? ' *' : ''}</span></td><td>{renderTitleChips(playerTitles.get(r.playerId) || [])}</td><td>{fmt(r.totalPoints)}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{r.kd}</td><td>{r.games10PlusKills}</td><td>{r.games20PlusKills}</td><td>{r.games30PlusKills}</td><td>{r.knifeKills}</td><td><span className="comparison-badge">{r.comparisonBadge}</span></td></tr>)}
   </tbody></table></div></section></div>;
 }
@@ -172,13 +176,15 @@ function MatchDetail() {
   const mr = rows.filter((r)=>r.matchId===m.id);
   const mk = knifeEvents.filter((k) => k.matchId === m.id);
   const teams = [...new Set(mr.map((x)=>x.team))];
-  const topMatchValue = mr.length ? Math.max(...mr.map((r) => calculateMatchValue(r, mr))) : 0;
+  const topMatchValue = mr.length ? Math.max(...mr.map((r) => calculateMatchValue(r, m, mr))) : 0;
+  const topDamage = mr.length ? Math.max(...mr.map((r)=>Number(r.damage || 0))) : 0;
+  const topAdr = mr.length ? Math.max(...mr.map((r)=> (m.teamAScore + m.teamBScore) > 0 ? Number((r.damage || 0)) / (m.teamAScore + m.teamBScore) : 0)) : 0;
   const topKills = mr.length ? Math.max(...mr.map((r)=>r.kills)) : 0;
   const topKd = mr.length ? Math.max(...mr.map((r)=>safeKD(r.kills, r.deaths))) : 0;
   return <div className="card"><h2>{normalizeMapName(m.map)} - {m.date}</h2><p><b>Match ID:</b> {getMatchDisplayId(m.id, matchDisplayIds)}</p><p>Final Score: {m.teamAName || 'Side A'} {m.teamAScore} - {m.teamBScore} {m.teamBName || 'Side B'}</p>
     {mk.length > 0 && <div className="receipts-board inline-receipts"><div className="receipts-head"><span>Knife Board</span><strong>{mk.length}</strong></div>{mk.map((k, i)=><div className="receipt-card" key={k.id}><span>#{i + 1}</span><b>{receiptText(players, k.attackerPlayerId, k.victimPlayerId)}</b></div>)}</div>}
-    <div className="helper-grid"><p><b>Highest Match Value</b><br/>{mr.find((r)=>calculateMatchValue(r, mr)===topMatchValue) ? `${playerName(players, mr.find((r)=>calculateMatchValue(r, mr)===topMatchValue)!.playerId)} (${fmt1(topMatchValue)})` : '-'}</p><p><b>Top Fragger</b><br/>{mr.find((r)=>r.kills===topKills) ? `${playerName(players, mr.find((r)=>r.kills===topKills)!.playerId)} (${topKills})` : '-'}</p><p><b>Best K/D</b><br/>{mr.find((r)=>safeKD(r.kills,r.deaths)===topKd) ? `${playerName(players, mr.find((r)=>safeKD(r.kills,r.deaths)===topKd)!.playerId)} (${topKd})` : '-'}</p><p><b>Match Value</b><br/>Individual match performance score. Mostly based on kills, assists, deaths, K/D, and carry impact, with a small result bonus.</p></div>
-    {teams.map((t)=><div key={t}><h3>{t}</h3><div className="table-wrap"><table><thead><tr><th>Player</th><th>K</th><th>D</th><th>A</th><th>Total Points</th><th>Match Value</th></tr></thead><tbody>{mr.filter((r)=>r.team===t).map((r)=><tr key={r.id} className={[calculateMatchValue(r, mr)===topMatchValue ? 'highlight-value' : '', r.kills===topKills ? 'highlight-kills' : '', safeKD(r.kills,r.deaths)===topKd ? 'highlight-kd' : ''].join(' ')}><td>{players.find((p)=>p.id===r.playerId)?.name}</td><td>{r.kills}</td><td>{r.deaths}</td><td>{r.assists}</td><td>{fmt(calculateTotalPointsForMatch(r))}</td><td className="war-cell">{fmt1(calculateMatchValue(r, mr))}</td></tr>)}</tbody></table></div></div>)}
+    <div className="helper-grid"><p><b>Highest WAR Lite</b><br/>{mr.find((r)=>calculateMatchValue(r, m, mr)===topMatchValue) ? `${playerName(players, mr.find((r)=>calculateMatchValue(r, m, mr)===topMatchValue)!.playerId)} (${fmt1(topMatchValue)})` : '-'}</p><p><b>Top Fragger</b><br/>{mr.find((r)=>r.kills===topKills) ? `${playerName(players, mr.find((r)=>r.kills===topKills)!.playerId)} (${topKills})` : '-'}</p><p><b>Highest Damage</b><br/>{mr.find((r)=>(r.damage||0)===topDamage) ? `${playerName(players, mr.find((r)=>(r.damage||0)===topDamage)!.playerId)} (${topDamage})` : '-'}</p><p><b>Best ADR</b><br/>{mr.find((r)=>(((r.damage||0)/(Math.max(1,m.teamAScore + m.teamBScore)))===topAdr)) ? `${playerName(players, mr.find((r)=>(((r.damage||0)/(Math.max(1,m.teamAScore + m.teamBScore)))===topAdr))!.playerId)} (${fmt1(topAdr)})` : '-'}</p></div>
+    {teams.map((t)=><div key={t}><h3>{t}</h3><div className="table-wrap"><table><thead><tr><th>Player</th><th>Side</th><th>Result</th><th>K</th><th>D</th><th>A</th><th>Damage</th><th>HS%</th><th>ADR</th><th>K/D</th><th>Total Points</th><th>WAR Lite</th></tr></thead><tbody>{mr.filter((r)=>r.team===t).map((r)=><tr key={r.id} className={[calculateMatchValue(r, m, mr)===topMatchValue ? 'highlight-value' : '', r.kills===topKills ? 'highlight-kills' : '', safeKD(r.kills,r.deaths)===topKd ? 'highlight-kd' : '', (r.damage||0)===topDamage ? 'highlight-dmg' : '', (((r.damage||0)/(Math.max(1,m.teamAScore + m.teamBScore)))===topAdr) ? 'highlight-adr' : ''].join(' ')}><td>{players.find((p)=>p.id===r.playerId)?.name}</td><td>{r.team}</td><td>{r.result}</td><td>{r.kills}</td><td>{r.deaths}</td><td>{r.assists}</td><td>{r.damage ?? '—'}</td><td>{r.hsPercent ?? '—'}</td><td>{r.damage != null ? fmt1((r.damage)/(Math.max(1,m.teamAScore + m.teamBScore))) : '—'}</td><td>{safeKD(r.kills,r.deaths)}</td><td>{fmt(calculateTotalPointsForMatch(r))}</td><td className="war-cell">{fmt1(calculateMatchValue(r, m, mr))}</td></tr>)}</tbody></table></div></div>)}
   </div>;
 }
 
@@ -189,7 +195,7 @@ function StatsPage() {
   const matchDisplayIds = useMemo(() => generateMatchDisplayIds(matches), [matches]);
   const allTime = getAllTimeRecords(players, rows, matches, knifeEvents, matchDisplayIds);
   const knifeBoard = getKnifeBoard(players, knifeEvents, matchDisplayIds);
-  const moments = getMatchdayMoments(players, rows, knifeEvents, matchDisplayIds);
+  const moments = getMatchdayMoments(players, rows, matches, knifeEvents, matchDisplayIds);
   const topMatchdayScore = board.allRows
     .flatMap((r) => r.matchdayScores.map((s) => ({ playerId: r.playerId, name: r.name, ...s })))
     .sort((a, b) => b.score - a.score)[0];
@@ -214,12 +220,14 @@ function StatsPage() {
     <section className="card">
       <h3>All-Time Records</h3>
       <div className="helper-grid">
-        <p><b>Highest Match Value</b><br />{allTime.bestMatchValue.playerName || '-'} {allTime.bestMatchValue.row ? `(${fmt1(calculateMatchValue(allTime.bestMatchValue.row, rows.filter((x) => x.matchId === allTime.bestMatchValue.row?.matchId)))})` : ''}<br />{allTime.bestMatchValue.matchId ? `Match ID: ${allTime.bestMatchValue.matchId}` : ''}</p>
+        <p><b>Highest WAR Lite Match</b><br />{allTime.bestMatchValue.playerName || '-'} {allTime.bestMatchValue.row ? `(${fmt1(calculateMatchValue(allTime.bestMatchValue.row, allTime.bestMatchValue.match, rows.filter((x) => x.matchId === allTime.bestMatchValue.row?.matchId)))})` : ''}<br />{allTime.bestMatchValue.matchId ? `Match ID: ${allTime.bestMatchValue.matchId}` : ''}</p>
         <p><b>Highest Matchday Score</b><br />{topMatchdayScore ? `${topMatchdayScore.name} (${fmt1(topMatchdayScore.score)})` : '-'}<br />{topMatchdayScore ? topMatchdayScore.title : ''}</p>
         <p><b>Most Kills in a Match</b><br />{allTime.mostKills.playerName || '-'} {allTime.mostKills.row ? `(${allTime.mostKills.row.kills})` : ''}<br />{allTime.mostKills.matchId ? `Match ID: ${allTime.mostKills.matchId}` : ''}</p>
         <p><b>Most Assists in a Match</b><br />{allTime.mostAssists.playerName || '-'} {allTime.mostAssists.row ? `(${allTime.mostAssists.row.assists})` : ''}<br />{allTime.mostAssists.matchId ? `Match ID: ${allTime.mostAssists.matchId}` : ''}</p>
         <p><b>Best K/D Match (10+ Kills)</b><br />{allTime.bestKd.playerName || '-'} {allTime.bestKd.row ? `(${safeKD(allTime.bestKd.row.kills, allTime.bestKd.row.deaths)})` : ''}<br />{allTime.bestKd.matchId ? `Match ID: ${allTime.bestKd.matchId}` : ''}</p>
-        <p><b>Most Knife Kills / Most Times Knifed</b><br />{allTime.knifeArtist?.name || '-'} ({allTime.knifeArtist?.count || 0}) / {allTime.knifeVictim?.name || '-'} ({allTime.knifeVictim?.count || 0})</p>
+        <p><b>Highest Damage Match</b><br />{allTime.highestDamage.playerName || '-'} {allTime.highestDamage.row ? `(${allTime.highestDamage.row.damage || 0})` : ''}<br />{allTime.highestDamage.matchId ? `Match ID: ${allTime.highestDamage.matchId}` : ''}</p>
+        <p><b>Best ADR Match</b><br />{allTime.bestAdr.playerName || '-'} {allTime.bestAdr.row ? `(${fmt1((allTime.bestAdr.row.damage || 0) / Math.max(1, (allTime.bestAdr.match?.teamAScore || 0) + (allTime.bestAdr.match?.teamBScore || 0)))})` : ''}<br />{allTime.bestAdr.matchId ? `Match ID: ${allTime.bestAdr.matchId}` : ''}</p>
+        <p><b>Survivor</b><br />{fun.awards.find((a)=>a.label==='Survivor')?.playerName || '-'}<br />{fun.awards.find((a)=>a.label==='Survivor')?.stat || ''}</p>
       </div>
     </section>
     <section className="grid2">
@@ -233,7 +241,7 @@ function Players() {
   const { players, rows, matches, matchDays, knifeEvents } = useData();
   const leaderboard = buildLeaderboardRows(players, matchDays, matches, rows, knifeEvents, 'all');
   const board = [...leaderboard.mainRows, ...leaderboard.impactRows, ...leaderboard.inactiveRows].filter((r)=>r.matchesPlayed > 0);
-  return <div className="cards">{board.map((p, i)=><NavLink key={p.playerId} to={`/players/${p.playerId}`} className="card player"><p className={`rank-chip rank-${i+1}`}>{`Rank #${i+1}`}</p><h3>{p.name}</h3><p>{fmt1(p.warRating)} War Rating</p><p>{p.matchesPlayed} matches</p><p>{p.category}</p><p>K/D {p.kd}</p><p>Knifed {p.knifeKills}</p></NavLink>)}</div>;
+  return <div className="cards">{board.map((p, i)=><NavLink key={p.playerId} to={`/players/${p.playerId}`} className="card player"><p className={`rank-chip rank-${i+1}`}>{`Rank #${i+1}`}</p><h3>{p.name}</h3><p>{fmt1(p.warRating)} WAR Lite</p><p>{p.matchesPlayed} matches</p><p>{p.category}</p><p>K/D {p.kd}</p><p>Knifed {p.knifeKills}</p></NavLink>)}</div>;
 }
 
 function PlayerProfile() {
@@ -257,7 +265,7 @@ function PlayerProfile() {
   const games20 = pr.filter((r) => r.kills >= 20).length;
   const games30 = pr.filter((r) => r.kills >= 30).length;
   const profileBadges = buildProfileFunBadges(pid, fun).slice(0, 3);
-  return <div className="card"><h2>{p.name}</h2>{profile && profile.category !== 'Regular' && profile.wouldRank && <p className="warn">Not officially ranked due to attendance, but would rank #{profile.wouldRank} among Regulars by War Rating.</p>}<section className="stats-grid"><div className="stat card"><h3>Category</h3><p>{profile?.category || 'Inactive'}</p></div><div className="stat card"><h3>War Rating</h3><p>{fmt1(profile?.warRating || 0)}</p></div><div className="stat card"><h3>Form</h3><p>{fmt1(profile?.formRating || 0)}</p></div><div className="stat card"><h3>Total Points</h3><p>{fmt(profile?.totalPoints || points)}</p></div><div className="stat card"><h3>Attendance</h3><p>{pct(profile?.attendanceRate || 0)}</p></div><div className="stat card"><h3>Matchdays</h3><p>{profile?.matchdaysPlayed || 0}</p></div><div className="stat card"><h3>Matches</h3><p>{pr.length}</p></div><div className="stat card"><h3>Wins/Losses</h3><p>{wins}/{losses}</p></div><div className="stat card"><h3>Win %</h3><p>{pr.length?fmt1((wins/pr.length)*100):0}%</p></div><div className="stat card"><h3>K/D</h3><p>{safeKD(kills,deaths)}</p></div><div className="stat card"><h3>Knifed</h3><p>{knifeKills}</p></div><div className="stat card"><h3>Got Knifed</h3><p>{knifeDeaths}</p></div></section>
+  return <div className="card"><h2>{p.name}</h2>{profile && profile.category !== 'Regular' && profile.wouldRank && <p className="warn">Not officially ranked due to attendance, but would rank #{profile.wouldRank} among Regulars by WAR Lite.</p>}<section className="stats-grid"><div className="stat card"><h3>Category</h3><p>{profile?.category || 'Inactive'}</p></div><div className="stat card"><h3>WAR Lite</h3><p>{fmt1(profile?.warRating || 0)}</p></div><div className="stat card"><h3>Form</h3><p>{fmt1(profile?.formRating || 0)}</p></div><div className="stat card"><h3>Total Points</h3><p>{fmt(profile?.totalPoints || points)}</p></div><div className="stat card"><h3>Attendance</h3><p>{pct(profile?.attendanceRate || 0)}</p></div><div className="stat card"><h3>Matchdays</h3><p>{profile?.matchdaysPlayed || 0}</p></div><div className="stat card"><h3>Matches</h3><p>{pr.length}</p></div><div className="stat card"><h3>Wins/Losses</h3><p>{wins}/{losses}</p></div><div className="stat card"><h3>Win %</h3><p>{pr.length?fmt1((wins/pr.length)*100):0}%</p></div><div className="stat card"><h3>K/D</h3><p>{safeKD(kills,deaths)}</p></div><div className="stat card"><h3>Knifed</h3><p>{knifeKills}</p></div><div className="stat card"><h3>Got Knifed</h3><p>{knifeDeaths}</p></div></section>
   {profileBadges.length > 0 && <><h3>Player Titles</h3><div className="badge-row">{profileBadges.map((b) => <span className="fun-badge" key={b}>{b}</span>)}</div></>}
   <p>Kills {kills} | Deaths {deaths} | Assists {assists}</p>
   <p>10+ Kill Games {games10} | 20+ Kill Games {games20} | 30+ Kill Games {games30}</p>
@@ -333,7 +341,7 @@ function AddOrEditMatch({ edit }: { edit?: Match }) {
   useEffect(()=>{ if (edit && existingRows.length) setRows(existingRows.map((r)=>({ ...r }))); },[edit, existingRows.length]);
   const possibleDup = matches.find((m)=>m.id!==edit?.id && m.date===form.date && m.map===form.map && m.teamAScore===Number(form.teamAScore) && m.teamBScore===Number(form.teamBScore));
   const addRows = () => {
-    const base = players.slice(0,10).map((p,idx)=>({ playerId: p.id, team: idx<5?form.teamAName:form.teamBName, result: idx<5?'WIN':'LOSS', kills:0,deaths:0,assists:0,mvps:0 }));
+    const base = players.slice(0,10).map((p,idx)=>({ playerId: p.id, team: idx<5?form.teamAName:form.teamBName, result: idx<5?'WIN':'LOSS', kills:0,deaths:0,assists:0,damage:0,hsPercent:0,mvps:0 }));
     setRows(base);
   };
   const save = async () => {
@@ -360,8 +368,8 @@ function AddOrEditMatch({ edit }: { edit?: Match }) {
   <input type="number" value={form.teamAScore} onChange={(e)=>setForm({ ...form, teamAScore: Number(e.target.value) })} placeholder="Side A score" />
   <input type="number" value={form.teamBScore} onChange={(e)=>setForm({ ...form, teamBScore: Number(e.target.value) })} placeholder="Side B score" />
   </div>
-  <div className="actions"><button onClick={addRows}>Quick Add 10 Player Rows (5 per side)</button><button onClick={()=>setRows([...rows,{ playerId: players[0]?.id, team: form.teamAName || 'Side A', result: 'WIN', kills:0,deaths:0,assists:0,mvps:0 }])}>Add Row</button></div>
-  <div className="table-wrap"><table><thead><tr><th>Player</th><th>Side</th><th>Result</th><th>K</th><th>D</th><th>A</th></tr></thead><tbody>{rows.map((r,idx)=><tr key={idx}><td><select value={r.playerId} onChange={(e)=>{const n=[...rows];n[idx].playerId=Number(e.target.value);setRows(n);}}>{players.map((p)=><option key={p.id} value={p.id}>{p.name}</option>)}</select></td><td><select value={r.team} onChange={(e)=>{const n=[...rows];n[idx].team=e.target.value;setRows(n);}}><option value={form.teamAName || 'Side A'}>{form.teamAName || 'Side A'}</option><option value={form.teamBName || 'Side B'}>{form.teamBName || 'Side B'}</option></select></td><td><select value={r.result} onChange={(e)=>{const n=[...rows];n[idx].result=e.target.value as MatchResult;setRows(n);}}><option>WIN</option><option>LOSS</option><option>DRAW</option></select></td>{['kills','deaths','assists'].map((k)=><td key={k}><input type="number" value={r[k]} onChange={(e)=>{const n=[...rows];n[idx][k]=Number(e.target.value);setRows(n);}}/></td>)}</tr>)}</tbody></table></div>
+  <div className="actions"><button onClick={addRows}>Quick Add 10 Player Rows (5 per side)</button><button onClick={()=>setRows([...rows,{ playerId: players[0]?.id, team: form.teamAName || 'Side A', result: 'WIN', kills:0,deaths:0,assists:0,damage:0,hsPercent:0,mvps:0 }])}>Add Row</button></div>
+  <div className="table-wrap"><table><thead><tr><th>Player</th><th>Side</th><th>Result</th><th>K</th><th>D</th><th>A</th><th>Damage</th><th>HS%</th></tr></thead><tbody>{rows.map((r,idx)=><tr key={idx}><td><select value={r.playerId} onChange={(e)=>{const n=[...rows];n[idx].playerId=Number(e.target.value);setRows(n);}}>{players.map((p)=><option key={p.id} value={p.id}>{p.name}</option>)}</select></td><td><select value={r.team} onChange={(e)=>{const n=[...rows];n[idx].team=e.target.value;setRows(n);}}><option value={form.teamAName || 'Side A'}>{form.teamAName || 'Side A'}</option><option value={form.teamBName || 'Side B'}>{form.teamBName || 'Side B'}</option></select></td><td><select value={r.result} onChange={(e)=>{const n=[...rows];n[idx].result=e.target.value as MatchResult;setRows(n);}}><option>WIN</option><option>LOSS</option><option>DRAW</option></select></td>{['kills','deaths','assists','damage','hsPercent'].map((k)=><td key={k}><input type="number" value={r[k] ?? 0} onChange={(e)=>{const n=[...rows];n[idx][k]=Number(e.target.value);setRows(n);}}/></td>)}</tr>)}</tbody></table></div>
   <div className="actions"><button onClick={save}>Save Match</button></div></div>;
 }
 

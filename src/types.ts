@@ -55,6 +55,8 @@ export interface MatchPlayer {
   kills: number;
   deaths: number;
   assists: number;
+  damage?: number;
+  hsPercent?: number;
   mvps: number;
   points: number;
 }
