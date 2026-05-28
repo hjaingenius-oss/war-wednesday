@@ -36,12 +36,21 @@ export class LeagueDb extends Dexie {
       match_players: '++id, matchId, playerId, result, team',
       knife_events: '++id, matchId, attackerPlayerId, victimPlayerId'
     });
+    this.version(4).stores({
+      players: '++id, name',
+      player_aliases: '++id, playerId, alias',
+      seasons: '++id, name, isCurrent',
+      match_days: '++id, seasonId, eventDate, title, [seasonId+eventDate]',
+      matches: '++id, seasonId, matchDayId, date, map, duplicateMarked, [matchDayId+date], [date+map]',
+      match_players: '++id, matchId, playerId, result, team, [matchId+playerId], [playerId+matchId]',
+      knife_events: '++id, matchId, attackerPlayerId, victimPlayerId, [attackerPlayerId+victimPlayerId], [victimPlayerId+attackerPlayerId]'
+    });
   }
 }
 
 export const db = new LeagueDb();
 const now = () => new Date().toISOString();
-const rp = (r: MatchResult) => (r === 'WIN' ? 10 : r === 'DRAW' ? 5 : 2);
+const rp = (r: MatchResult) => (r === 'WIN' ? 5 : r === 'DRAW' ? 3 : 1);
 const points = (r: MatchResult, k: number, a: number, d: number) => rp(r) + k + a * 0.5 - d * 0.5;
 
 type RawPlayerRow = {

@@ -435,7 +435,12 @@ export function buildFunAwards(
     tooltip: 'Hardest player to remove from the server.',
     playerId: survivor.playerId,
     playerName: survivor.name,
-    stat: `${fmt1(survivor.deaths / Math.max(1, survivor.matchesPlayed))} deaths/match`
+    stat: (() => {
+      const pr = rowsByPlayer.get(survivor.playerId) || [];
+      const totalRounds = Math.max(1, sum(pr.map((x) => safeNumber(matchById.get(x.matchId)?.teamAScore) + safeNumber(matchById.get(x.matchId)?.teamBScore))));
+      const notKilledPct = Math.max(0, (1 - (survivor.deaths / totalRounds)) * 100);
+      return `not killed in ${fmt1(notKilledPct)}% of rounds`;
+    })()
   });
 
   const wildcard = pickBest(
@@ -662,7 +667,7 @@ export function generateMatchDisplayIds(matches: Match[]) {
 
 export function getMatchDisplayId(matchId: number | undefined, matchDisplayIds: Map<number, string>) {
   if (!matchId) return 'Unknown Match';
-  return matchDisplayIds.get(matchId) || `Match ${matchId}`;
+  return matchDisplayIds.get(matchId) || 'Unknown Match';
 }
 
 export function getKnifeBoard(players: Player[], knifeEvents: KnifeEvent[], matchDisplayIds: Map<number, string>) {
@@ -699,8 +704,12 @@ export function getAllTimeRecords(players: Player[], rows: MatchPlayer[], matche
   const bestMatchValueRow = [...rows].sort((a, b) => calculateMatchValue(b, matchById.get(b.matchId), rowsByMatchId.get(b.matchId) || []) - calculateMatchValue(a, matchById.get(a.matchId), rowsByMatchId.get(a.matchId) || []))[0];
   const mostKillsRow = [...rows].sort((a, b) => safeNumber(b.kills) - safeNumber(a.kills))[0];
   const mostAssistsRow = [...rows].sort((a, b) => safeNumber(b.assists) - safeNumber(a.assists))[0];
-  const highestDamageRow = [...rows].sort((a, b) => safeNumber((b as MatchPlayer).damage) - safeNumber((a as MatchPlayer).damage))[0];
-  const bestAdrRow = [...rows].sort((a, b) => {
+  const highestDamageRow = [...rows]
+    .filter((r) => safeNumber((r as MatchPlayer).damage) > 0)
+    .sort((a, b) => safeNumber((b as MatchPlayer).damage) - safeNumber((a as MatchPlayer).damage))[0];
+  const bestAdrRow = [...rows]
+    .filter((r) => safeNumber((r as MatchPlayer).damage) > 0)
+    .sort((a, b) => {
     const am = matchById.get(a.matchId);
     const bm = matchById.get(b.matchId);
     const ar = Math.max(1, safeNumber(am?.teamAScore) + safeNumber(am?.teamBScore));
@@ -757,7 +766,13 @@ export function getMatchdayMoments(
   if (topKillsRow) moments.push(`${nameOf(topKillsRow.playerId)} dropped ${topKillsRow.kills} kills in ${getMatchDisplayId(topKillsRow.matchId, matchDisplayIds)}.`);
   const topMvRow = [...recentRows].sort((a, b) => calculateMatchValue(b, matchById.get(b.matchId), rowsByMatchId.get(b.matchId) || []) - calculateMatchValue(a, matchById.get(a.matchId), rowsByMatchId.get(a.matchId) || []))[0];
   if (topMvRow) moments.push(`${nameOf(topMvRow.playerId)} posted the best score of the night: ${fmt1(calculateMatchValue(topMvRow, matchById.get(topMvRow.matchId), rowsByMatchId.get(topMvRow.matchId) || []))}.`);
-  const topAssistRow = [...recentRows].sort((a, b) => b.assists - a.assists)[0];
+  const latestMatch = [...matches].sort((a, b) => b.date.localeCompare(a.date) || (b.id || 0) - (a.id || 0))[0];
+  const latestMatchdayId = latestMatch?.matchDayId;
+  const latestMatchdayRows = latestMatchdayId
+    ? rows.filter((r) => matchById.get(r.matchId)?.matchDayId === latestMatchdayId)
+    : [];
+  const assistPool = latestMatchdayRows.length ? latestMatchdayRows : recentRows;
+  const topAssistRow = [...assistPool].sort((a, b) => b.assists - a.assists)[0];
   if (topAssistRow) moments.push(`${nameOf(topAssistRow.playerId)} was Assist Hero this matchday with ${topAssistRow.assists} assists.`);
   const latestKnife = [...knifeEvents].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
   if (latestKnife) moments.push(`${nameOf(latestKnife.attackerPlayerId)} knifed ${nameOf(latestKnife.victimPlayerId)} in ${getMatchDisplayId(latestKnife.matchId, matchDisplayIds)}.`);
