@@ -1,0 +1,23 @@
+import type { MatchPlayer, MatchResult } from '../types';
+
+export function resultPoints(result: MatchResult) {
+  if (result === 'WIN') return 10;
+  if (result === 'DRAW') return 5;
+  return 2;
+}
+
+export function calculatePoints(row: Pick<MatchPlayer, 'result'|'kills'|'assists'|'deaths'|'mvps'>) {
+  return resultPoints(row.result) + safeNumber(row.kills) + safeNumber(row.assists) * 0.5 - safeNumber(row.deaths) * 0.5;
+}
+
+export function safeKD(kills: number, deaths: number) {
+  const safeKills = safeNumber(kills);
+  const safeDeaths = safeNumber(deaths);
+  if (safeDeaths <= 0) return safeKills;
+  return Number((safeKills / safeDeaths).toFixed(2));
+}
+
+export function safeNumber(value: unknown) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
