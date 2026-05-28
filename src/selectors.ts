@@ -23,6 +23,10 @@ export interface PlayerLeaderboardRow {
   kills: number;
   deaths: number;
   assists: number;
+  damage: number;
+  headshotKills: number;
+  damagePerGame: number;
+  headshotKillsPerGame: number;
   knifeKills: number;
   knifeDeaths: number;
   games10PlusKills: number;
@@ -644,6 +648,8 @@ function buildPlayerRow(
   const kills = sum(playerRows.map((r) => safeNumber(r.kills)));
   const deaths = sum(playerRows.map((r) => safeNumber(r.deaths)));
   const assists = sum(playerRows.map((r) => safeNumber(r.assists)));
+  const damage = sum(playerRows.map((r) => safeNumber((r as MatchPlayer).damage)));
+  const headshotKills = sum(playerRows.map((r) => safeNumber(r.kills) * (safeNumber((r as MatchPlayer).hsPercent) / 100)));
   const totalPoints = sum(playerRows.map(calculateTotalPointsForMatch));
   const wins = playerRows.filter((r) => r.result === 'WIN').length;
   const losses = playerRows.filter((r) => r.result === 'LOSS').length;
@@ -676,6 +682,10 @@ function buildPlayerRow(
     kills,
     deaths,
     assists,
+    damage,
+    headshotKills,
+    damagePerGame: matchesPlayed ? damage / matchesPlayed : 0,
+    headshotKillsPerGame: matchesPlayed ? headshotKills / matchesPlayed : 0,
     knifeKills,
     knifeDeaths,
     games10PlusKills: playerRows.filter((r) => safeNumber(r.kills) >= 10).length,
