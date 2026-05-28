@@ -352,7 +352,7 @@ export function buildFunAwards(
     tooltip: 'Making everyone else look good.',
     playerId: assistHero.playerId,
     playerName: assistHero.name,
-    stat: `${fmt1(assistHero.assists / Math.max(1, (sum((rowsByPlayer.get(assistHero.playerId) || []).map((x) => safeNumber(matchById.get(x.matchId)?.teamAScore) + safeNumber(matchById.get(x.matchId)?.teamBScore))) || assistHero.matchesPlayed)))} assists/round`
+    stat: `${fmt1(assistHero.assists / Math.max(1, assistHero.matchesPlayed))} assists/match`
   });
 
   const assassin = pickBest(
@@ -374,7 +374,7 @@ export function buildFunAwards(
     tooltip: 'Highest kill rate in the lobby.',
     playerId: assassin.playerId,
     playerName: assassin.name,
-    stat: `${fmt1(assassin.kills / Math.max(1, (sum((rowsByPlayer.get(assassin.playerId) || []).map((x) => safeNumber(matchById.get(x.matchId)?.teamAScore) + safeNumber(matchById.get(x.matchId)?.teamBScore))) || assassin.matchesPlayed)))} kills/round`
+    stat: `${fmt1(assassin.kills / Math.max(1, assassin.matchesPlayed))} kills/match`
   });
 
   const knifeArtist = pickBest(
@@ -435,7 +435,7 @@ export function buildFunAwards(
     tooltip: 'Hardest player to remove from the server.',
     playerId: survivor.playerId,
     playerName: survivor.name,
-    stat: `${fmt1(survivor.deaths / Math.max(1, sum((rowsByPlayer.get(survivor.playerId) || []).map((x) => safeNumber(matchById.get(x.matchId)?.teamAScore) + safeNumber(matchById.get(x.matchId)?.teamBScore)))))} deaths/round`
+    stat: `${fmt1(survivor.deaths / Math.max(1, survivor.matchesPlayed))} deaths/match`
   });
 
   const wildcard = pickBest(
@@ -756,7 +756,7 @@ export function getMatchdayMoments(
   const topKillsRow = [...recentRows].sort((a, b) => b.kills - a.kills)[0];
   if (topKillsRow) moments.push(`${nameOf(topKillsRow.playerId)} dropped ${topKillsRow.kills} kills in ${getMatchDisplayId(topKillsRow.matchId, matchDisplayIds)}.`);
   const topMvRow = [...recentRows].sort((a, b) => calculateMatchValue(b, matchById.get(b.matchId), rowsByMatchId.get(b.matchId) || []) - calculateMatchValue(a, matchById.get(a.matchId), rowsByMatchId.get(a.matchId) || []))[0];
-  if (topMvRow) moments.push(`${nameOf(topMvRow.playerId)} posted the best WAR Lite of the night: ${fmt1(calculateMatchValue(topMvRow, matchById.get(topMvRow.matchId), rowsByMatchId.get(topMvRow.matchId) || []))}.`);
+  if (topMvRow) moments.push(`${nameOf(topMvRow.playerId)} posted the best score of the night: ${fmt1(calculateMatchValue(topMvRow, matchById.get(topMvRow.matchId), rowsByMatchId.get(topMvRow.matchId) || []))}.`);
   const topAssistRow = [...recentRows].sort((a, b) => b.assists - a.assists)[0];
   if (topAssistRow) moments.push(`${nameOf(topAssistRow.playerId)} was Assist Hero this matchday with ${topAssistRow.assists} assists.`);
   const latestKnife = [...knifeEvents].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
