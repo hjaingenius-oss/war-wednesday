@@ -438,6 +438,19 @@ td {
   border-bottom: 1px solid var(--line);
 }
 
+th {
+  position: relative;
+}
+
+th:first-child::after {
+  content: "+";
+  position: absolute;
+  right: 6px;
+  top: 8px;
+  color: rgba(184,255,44,.45);
+  font-weight: 900;
+}
+
 .war-cell {
   color: var(--acid);
   font-weight: 900;
@@ -492,6 +505,50 @@ tr:hover td {
   align-items: center;
   gap: 4px;
   white-space: nowrap;
+}
+
+.titles-cell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.title-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  border: 1px solid rgba(184,255,44,.28);
+  border-radius: 999px;
+  background: rgba(184,255,44,.08);
+  color: #dfffb0;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.title-chip::before {
+  content: "+";
+  margin-right: 5px;
+  color: rgba(184,255,44,.75);
+}
+
+.title-chip.title-knife {
+  border-color: rgba(255,77,77,.38);
+  background: rgba(255,77,77,.12);
+  color: #ffd2d2;
+}
+
+.title-chip.title-knife::before {
+  content: "[]>";
+  font-size: 10px;
+  color: rgba(255,126,126,.9);
+}
+
+.title-chip.title-map {
+  border-color: rgba(65,234,212,.34);
+  background: rgba(65,234,212,.12);
+  color: #cdf8f2;
 }
 
 .cards {
