@@ -96,7 +96,7 @@ function Dashboard() {
       <aside className="receipts-board">
         <div className="receipts-head"><span>Knife Board</span><strong>{knifeEvents.length}</strong></div>
         <div className="receipt-stack">
-          {knifeEvents.slice().reverse().map((e, i)=><div className="receipt-card" key={e.id}><span>#{i + 1}</span><b>{receiptText(players, e.attackerPlayerId, e.victimPlayerId)}</b></div>)}
+          {knifeEvents.slice().reverse().slice(0, 3).map((e, i)=><div className="receipt-card" key={e.id}><span>#{i + 1}</span><b>{receiptText(players, e.attackerPlayerId, e.victimPlayerId)}</b></div>)}
         </div>
       </aside>
     </section>
@@ -219,7 +219,7 @@ function StatsPage() {
       <h3>Map Kings</h3>
       {fun.mapSpecialists.length === 0
         ? <p className="muted">No map data yet.</p>
-        : <div className="map-grid">{fun.mapSpecialists.map((m) => <article className="map-card" key={m.map}><p className="award-title">{m.label}</p><h3>{m.playerName}</h3><p className="award-stat">{fmt1(m.dominanceScore)} dominance / {m.appearances} apps</p><p className="muted">{fmt1(m.kd)} K/D, {fmt1(m.winPct)}% win rate. Owns this map.</p></article>)}</div>}
+        : <div className="map-grid">{fun.mapSpecialists.map((m) => <article className="map-card map-king-card" key={m.map}><p className="award-title">{m.label}</p><h3>{m.playerName}</h3><p className="award-stat">{fmt1(m.dominanceScore)} dominance</p><div className="map-meta"><span>{m.appearances} games</span><span>{fmt1(m.kd)} K/D</span><span>{fmt1(m.winPct)}% wins</span></div><p className="muted">Owns this map.</p></article>)}</div>}
     </section>
     <section className="card">
       <h3>All-Time Records</h3>
