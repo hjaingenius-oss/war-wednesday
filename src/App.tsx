@@ -103,7 +103,7 @@ function Dashboard() {
   <section className="card">
     <h2>From the Records Room</h2>
     <div className="awards-grid">
-        {fun.awards.filter((a) => ['Assassin', 'Assist Hero', 'Firestarter', 'Flash Killer'].includes(a.label)).slice(0, 4).map((a) => <article className="award-card" key={a.key}>
+        {fun.awards.filter((a) => ['Assassin', 'Assist Hero', 'Bomber', 'Flasher'].includes(a.label)).slice(0, 4).map((a) => <article className="award-card" key={a.key}>
           <p className="award-title">{a.label}</p>
           <h3>{a.playerName}</h3>
           <p className="award-stat">{a.stat}</p>

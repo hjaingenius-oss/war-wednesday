@@ -351,7 +351,7 @@ const june11Matches: RawMatch[] = [
     rows: [
       { name: 'Radha', team: 'Side A', result: 'LOSS', kills: 34, deaths: 14, assists: 3, hsPercent: 8, damage: 3624, utilityDamage: 0, enemyFlashed: 1 },
       { name: 'Manson', team: 'Side A', result: 'LOSS', kills: 22, deaths: 16, assists: 2, hsPercent: 22, damage: 2352, utilityDamage: 0, enemyFlashed: 0 },
-      { name: 'Bob Marde', team: 'Side A', result: 'LOSS', kills: 16, deaths: 14, assists: 4, hsPercent: 31, damage: 1704, utilityDamage: 70, enemyFlashed: 7 },
+      { name: 'Bob Marde', team: 'Side A', result: 'LOSS', kills: 16, deaths: 14, assists: 4, hsPercent: 31, damage: 1704, utilityDamage: 0, enemyFlashed: 7 },
       { name: 'Mere Baap', team: 'Side A', result: 'LOSS', kills: 15, deaths: 16, assists: 2, hsPercent: 26, damage: 1824, utilityDamage: 0, enemyFlashed: 0 },
       { name: 'Hodor bitch!', team: 'Side A', result: 'LOSS', kills: 11, deaths: 20, assists: 5, hsPercent: 27, damage: 1152, utilityDamage: 36, enemyFlashed: 2 },
       { name: 'fatal_destiny', team: 'Side A', result: 'LOSS', kills: 8, deaths: 15, assists: 1, hsPercent: 37, damage: 960, utilityDamage: 0, enemyFlashed: 0 },
@@ -611,6 +611,32 @@ async function repairJune3Dust2IfNeeded() {
   })));
 }
 
+async function repairJune11UtilityStatsIfNeeded() {
+  const match = await db.matches
+    .where('[date+map]')
+    .equals([june11Date, 'Mirage'])
+    .first();
+  if (!match) return;
+
+  const bob = await db.players.where('name').equals('Bob Marde').first();
+  if (!bob?.id) return;
+
+  const row = await db.match_players
+    .where('[matchId+playerId]')
+    .equals([match.id!, bob.id])
+    .first();
+  if (!row) return;
+
+  const utilityDamage = Number((row as MatchPlayer).utilityDamage || 0);
+  const enemyFlashed = Number((row as MatchPlayer).enemyFlashed || 0);
+  if (utilityDamage === 0 && enemyFlashed === 7) return;
+
+  await db.match_players.update(row.id!, {
+    utilityDamage: 0,
+    enemyFlashed: 7
+  });
+}
+
 async function replaceWithImportedData() {
   await db.transaction('rw', [db.players, db.player_aliases, db.seasons, db.match_days, db.matches, db.match_players, db.knife_events], async () => {
     await db.knife_events.clear();
@@ -713,5 +739,6 @@ export async function seedIfEmpty() {
   await importJune3DataIfMissing();
   await repairJune3Dust2IfNeeded();
   await importJune11DataIfMissing();
+  await repairJune11UtilityStatsIfNeeded();
   await mergeAmanAliasIfNeeded();
 }

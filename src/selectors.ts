@@ -431,30 +431,12 @@ export function buildFunAwards(
       ]
     );
     addAward(firestarter && {
-      key: 'firestarter',
-      label: 'Firestarter',
+      key: 'bomber',
+      label: 'Bomber',
       tooltip: 'Highest utility damage per game.',
       playerId: firestarter.playerId,
       playerName: firestarter.name,
       stat: `${fmt1(firestarter.utilityDamagePerGame)} utility dmg/game`
-    });
-
-    const bomber = pickBest(
-      active,
-      (r) => r.utilityDamage,
-      [
-        (r) => r.utilityDamagePerGame,
-        (r) => r.warRating,
-        (r) => r.matchesPlayed
-      ]
-    );
-    addAward(bomber && {
-      key: 'bomber',
-      label: 'Bomber',
-      tooltip: 'Biggest total utility damage.',
-      playerId: bomber.playerId,
-      playerName: bomber.name,
-      stat: `${Math.round(bomber.utilityDamage)} total utility dmg`
     });
   }
 
@@ -469,8 +451,8 @@ export function buildFunAwards(
       ]
     );
     addAward(flashKiller && {
-      key: 'flashKiller',
-      label: 'Flash Killer',
+      key: 'flasher',
+      label: 'Flasher',
       tooltip: 'Highest enemies flashed per game.',
       playerId: flashKiller.playerId,
       playerName: flashKiller.name,
