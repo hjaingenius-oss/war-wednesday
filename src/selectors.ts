@@ -25,8 +25,12 @@ export interface PlayerLeaderboardRow {
   assists: number;
   damage: number;
   headshotKills: number;
+  utilityDamage: number;
+  enemyFlashed: number;
   damagePerGame: number;
   headshotKillsPerGame: number;
+  utilityDamagePerGame: number;
+  enemyFlashedPerGame: number;
   knifeKills: number;
   knifeDeaths: number;
   games10PlusKills: number;
@@ -46,7 +50,10 @@ export type FunAwardKey =
   | 'knifeVictim'
   | 'survivor'
   | 'wildcard'
-  | 'consistentPerformer';
+  | 'consistentPerformer'
+  | 'firestarter'
+  | 'bomber'
+  | 'flashKiller';
 
 export interface FunAwardWinner {
   key: FunAwardKey;
@@ -82,7 +89,7 @@ export function calculateTotalPointsForMatch(row: Pick<MatchPlayer, 'result' | '
 }
 
 export function calculateMatchValue(
-  row: Pick<MatchPlayer, 'result' | 'kills' | 'deaths' | 'assists' | 'damage' | 'hsPercent' | 'playerId'>,
+  row: Pick<MatchPlayer, 'result' | 'kills' | 'deaths' | 'assists' | 'damage' | 'hsPercent' | 'utilityDamage' | 'enemyFlashed' | 'playerId'>,
   match?: Pick<Match, 'teamAScore' | 'teamBScore'>,
   matchRows: Array<Pick<MatchPlayer, 'result' | 'kills' | 'assists' | 'deaths' | 'playerId' | 'team' | 'mvps'>> = []
 ) {
@@ -109,6 +116,8 @@ export function calculateMatchValue(
     assists: safeNumber(row.assists),
     damage: safeNumber((row as MatchPlayer).damage),
     headshotPercentage: safeNumber((row as MatchPlayer).hsPercent),
+    utilityDamage: safeNumber((row as MatchPlayer).utilityDamage),
+    enemyFlashed: safeNumber((row as MatchPlayer).enemyFlashed),
     mvps: safeNumber((row as MatchPlayer).mvps),
     result,
     teamRoundsWon,
@@ -340,6 +349,8 @@ export function buildFunAwards(
   const eligibleConsistent = active.filter(
     (r) => r.matchdaysPlayed >= 3 && regularMedianWar !== undefined && r.warRating >= regularMedianWar
   );
+  const hasUtilityDamage = windowRows.some((r) => safeNumber((r as MatchPlayer).utilityDamage) > 0);
+  const hasEnemyFlashed = windowRows.some((r) => safeNumber((r as MatchPlayer).enemyFlashed) > 0);
   const playerWarLiteAvg = (playerId: number) => {
     const pr = rowsByPlayer.get(playerId) || [];
     return average(pr.map((x) => calculateMatchValue(x, matchById.get(x.matchId), rowsByMatchId.get(x.matchId) || [])));
@@ -408,6 +419,64 @@ export function buildFunAwards(
     playerName: assassin.name,
     stat: `${fmt1(assassin.kills / Math.max(1, assassin.matchesPlayed))} kills/match`
   });
+
+  if (hasUtilityDamage) {
+    const firestarter = pickBest(
+      eligibleCore,
+      (r) => r.utilityDamagePerGame,
+      [
+        (r) => r.utilityDamage,
+        (r) => r.warRating,
+        (r) => r.matchesPlayed
+      ]
+    );
+    addAward(firestarter && {
+      key: 'firestarter',
+      label: 'Firestarter',
+      tooltip: 'Highest utility damage per game.',
+      playerId: firestarter.playerId,
+      playerName: firestarter.name,
+      stat: `${fmt1(firestarter.utilityDamagePerGame)} utility dmg/game`
+    });
+
+    const bomber = pickBest(
+      active,
+      (r) => r.utilityDamage,
+      [
+        (r) => r.utilityDamagePerGame,
+        (r) => r.warRating,
+        (r) => r.matchesPlayed
+      ]
+    );
+    addAward(bomber && {
+      key: 'bomber',
+      label: 'Bomber',
+      tooltip: 'Biggest total utility damage.',
+      playerId: bomber.playerId,
+      playerName: bomber.name,
+      stat: `${Math.round(bomber.utilityDamage)} total utility dmg`
+    });
+  }
+
+  if (hasEnemyFlashed) {
+    const flashKiller = pickBest(
+      eligibleCore,
+      (r) => r.enemyFlashedPerGame,
+      [
+        (r) => r.enemyFlashed,
+        (r) => r.warRating,
+        (r) => r.matchesPlayed
+      ]
+    );
+    addAward(flashKiller && {
+      key: 'flashKiller',
+      label: 'Flash Killer',
+      tooltip: 'Highest enemies flashed per game.',
+      playerId: flashKiller.playerId,
+      playerName: flashKiller.name,
+      stat: `${fmt1(flashKiller.enemyFlashedPerGame)} enemies flashed/game`
+    });
+  }
 
   const sharpshooterPool = eligibleCore.filter((r) => (recentGamesByPlayer.get(r.playerId) || []).length >= 3);
   const sharpshooter = pickBest(
@@ -650,6 +719,8 @@ function buildPlayerRow(
   const assists = sum(playerRows.map((r) => safeNumber(r.assists)));
   const damage = sum(playerRows.map((r) => safeNumber((r as MatchPlayer).damage)));
   const headshotKills = sum(playerRows.map((r) => safeNumber(r.kills) * (safeNumber((r as MatchPlayer).hsPercent) / 100)));
+  const utilityDamage = sum(playerRows.map((r) => safeNumber((r as MatchPlayer).utilityDamage)));
+  const enemyFlashed = sum(playerRows.map((r) => safeNumber((r as MatchPlayer).enemyFlashed)));
   const totalPoints = sum(playerRows.map(calculateTotalPointsForMatch));
   const wins = playerRows.filter((r) => r.result === 'WIN').length;
   const losses = playerRows.filter((r) => r.result === 'LOSS').length;
@@ -684,8 +755,12 @@ function buildPlayerRow(
     assists,
     damage,
     headshotKills,
+    utilityDamage,
+    enemyFlashed,
     damagePerGame: matchesPlayed ? damage / matchesPlayed : 0,
     headshotKillsPerGame: matchesPlayed ? headshotKills / matchesPlayed : 0,
+    utilityDamagePerGame: matchesPlayed ? utilityDamage / matchesPlayed : 0,
+    enemyFlashedPerGame: matchesPlayed ? enemyFlashed / matchesPlayed : 0,
     knifeKills,
     knifeDeaths,
     games10PlusKills: playerRows.filter((r) => safeNumber(r.kills) >= 10).length,
@@ -774,6 +849,12 @@ export function getAllTimeRecords(players: Player[], rows: MatchPlayer[], matche
   const highestDamageRow = [...rows]
     .filter((r) => safeNumber((r as MatchPlayer).damage) > 0)
     .sort((a, b) => safeNumber((b as MatchPlayer).damage) - safeNumber((a as MatchPlayer).damage))[0];
+  const highestUtilityDamageRow = [...rows]
+    .filter((r) => safeNumber((r as MatchPlayer).utilityDamage) > 0)
+    .sort((a, b) => safeNumber((b as MatchPlayer).utilityDamage) - safeNumber((a as MatchPlayer).utilityDamage))[0];
+  const mostEnemyFlashedRow = [...rows]
+    .filter((r) => safeNumber((r as MatchPlayer).enemyFlashed) > 0)
+    .sort((a, b) => safeNumber((b as MatchPlayer).enemyFlashed) - safeNumber((a as MatchPlayer).enemyFlashed))[0];
   const bestAdrRow = [...rows]
     .filter((r) => safeNumber((r as MatchPlayer).damage) > 0)
     .sort((a, b) => {
@@ -805,6 +886,8 @@ export function getAllTimeRecords(players: Player[], rows: MatchPlayer[], matche
     mostKills: withMeta(mostKillsRow),
     mostAssists: withMeta(mostAssistsRow),
     highestDamage: withMeta(highestDamageRow),
+    highestUtilityDamage: withMeta(highestUtilityDamageRow),
+    mostEnemyFlashed: withMeta(mostEnemyFlashedRow),
     bestAdr: withMeta(bestAdrRow),
     bestKd: withMeta(bestKdRow),
     knifeArtist,
@@ -844,6 +927,16 @@ export function getMatchdayMoments(
 
   const topAssistRow = [...scopedRows].sort((a, b) => b.assists - a.assists)[0];
   if (topAssistRow) moments.push(`${nameOf(topAssistRow.playerId)} was Assist Hero this matchday with ${topAssistRow.assists} assists in ${getMatchDisplayId(topAssistRow.matchId, matchDisplayIds)}.`);
+
+  const topUtilityRow = [...scopedRows]
+    .filter((r) => safeNumber((r as MatchPlayer).utilityDamage) > 0)
+    .sort((a, b) => safeNumber((b as MatchPlayer).utilityDamage) - safeNumber((a as MatchPlayer).utilityDamage))[0];
+  if (topUtilityRow) moments.push(`${nameOf(topUtilityRow.playerId)} set the utility pace with ${Math.round(safeNumber((topUtilityRow as MatchPlayer).utilityDamage))} utility damage in ${getMatchDisplayId(topUtilityRow.matchId, matchDisplayIds)}.`);
+
+  const topFlashRow = [...scopedRows]
+    .filter((r) => safeNumber((r as MatchPlayer).enemyFlashed) > 0)
+    .sort((a, b) => safeNumber((b as MatchPlayer).enemyFlashed) - safeNumber((a as MatchPlayer).enemyFlashed))[0];
+  if (topFlashRow) moments.push(`${nameOf(topFlashRow.playerId)} flashed ${Math.round(safeNumber((topFlashRow as MatchPlayer).enemyFlashed))} enemies in ${getMatchDisplayId(topFlashRow.matchId, matchDisplayIds)}.`);
 
   const latestKnife = [...knifeEvents].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
   if (latestKnife) moments.push(`${nameOf(latestKnife.attackerPlayerId)} knifed ${nameOf(latestKnife.victimPlayerId)} in ${getMatchDisplayId(latestKnife.matchId, matchDisplayIds)}.`);

@@ -57,6 +57,8 @@ export interface MatchPlayer {
   assists: number;
   damage?: number;
   hsPercent?: number;
+  utilityDamage?: number;
+  enemyFlashed?: number;
   mvps: number;
   points: number;
 }
