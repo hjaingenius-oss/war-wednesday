@@ -347,20 +347,20 @@ const june11Matches: RawMatch[] = [
     map: 'Mirage',
     teamAScore: 13,
     teamBScore: 11,
-    winningTeam: 'Side B',
+    winningTeam: 'Side A',
     rows: [
-      { name: 'Radha', team: 'Side A', result: 'LOSS', kills: 34, deaths: 14, assists: 3, hsPercent: 8, damage: 3624, utilityDamage: 0, enemyFlashed: 1 },
-      { name: 'Manson', team: 'Side A', result: 'LOSS', kills: 22, deaths: 16, assists: 2, hsPercent: 22, damage: 2352, utilityDamage: 0, enemyFlashed: 0 },
-      { name: 'Bob Marde', team: 'Side A', result: 'LOSS', kills: 16, deaths: 14, assists: 4, hsPercent: 31, damage: 1704, utilityDamage: 0, enemyFlashed: 7 },
-      { name: 'Mere Baap', team: 'Side A', result: 'LOSS', kills: 15, deaths: 16, assists: 2, hsPercent: 26, damage: 1824, utilityDamage: 0, enemyFlashed: 0 },
-      { name: 'Hodor bitch!', team: 'Side A', result: 'LOSS', kills: 11, deaths: 20, assists: 5, hsPercent: 27, damage: 1152, utilityDamage: 36, enemyFlashed: 2 },
-      { name: 'fatal_destiny', team: 'Side A', result: 'LOSS', kills: 8, deaths: 15, assists: 1, hsPercent: 37, damage: 960, utilityDamage: 0, enemyFlashed: 0 },
-      { name: 'Aman', team: 'Side B', result: 'WIN', kills: 4, deaths: 19, assists: 3, hsPercent: 11, damage: 1850, utilityDamage: 0, enemyFlashed: 0 },
-      { name: 'DT', team: 'Side B', result: 'WIN', kills: 32, deaths: 14, assists: 2, hsPercent: 25, damage: 3120, utilityDamage: 58, enemyFlashed: 2 },
-      { name: 'VPS', team: 'Side B', result: 'WIN', kills: 19, deaths: 20, assists: 3, hsPercent: 36, damage: 2016, utilityDamage: 0, enemyFlashed: 0 },
-      { name: 'Shire17', team: 'Side B', result: 'WIN', kills: 15, deaths: 17, assists: 3, hsPercent: 20, damage: 1608, utilityDamage: 0, enemyFlashed: 0 },
-      { name: 'Voldemort', team: 'Side B', result: 'WIN', kills: 9, deaths: 17, assists: 3, hsPercent: 11, damage: 1128, utilityDamage: 61, enemyFlashed: 0 },
-      { name: 'thomas', team: 'Side B', result: 'WIN', kills: 5, deaths: 19, assists: 3, hsPercent: 0, damage: 552, utilityDamage: 0, enemyFlashed: 0 }
+      { name: 'Radha', team: 'Side A', result: 'WIN', kills: 34, deaths: 14, assists: 3, hsPercent: 8, damage: 3624, utilityDamage: 0, enemyFlashed: 1 },
+      { name: 'Manson', team: 'Side A', result: 'WIN', kills: 22, deaths: 16, assists: 2, hsPercent: 22, damage: 2352, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Bob Marde', team: 'Side A', result: 'WIN', kills: 16, deaths: 14, assists: 4, hsPercent: 31, damage: 1704, utilityDamage: 0, enemyFlashed: 7 },
+      { name: 'Mere Baap', team: 'Side A', result: 'WIN', kills: 15, deaths: 16, assists: 2, hsPercent: 26, damage: 1824, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Hodor bitch!', team: 'Side A', result: 'WIN', kills: 11, deaths: 20, assists: 5, hsPercent: 27, damage: 1152, utilityDamage: 36, enemyFlashed: 2 },
+      { name: 'fatal_destiny', team: 'Side A', result: 'WIN', kills: 8, deaths: 15, assists: 1, hsPercent: 37, damage: 960, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Aman', team: 'Side B', result: 'LOSS', kills: 4, deaths: 19, assists: 3, hsPercent: 11, damage: 1850, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'DT', team: 'Side B', result: 'LOSS', kills: 32, deaths: 14, assists: 2, hsPercent: 25, damage: 3120, utilityDamage: 58, enemyFlashed: 2 },
+      { name: 'VPS', team: 'Side B', result: 'LOSS', kills: 19, deaths: 20, assists: 3, hsPercent: 36, damage: 2016, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Shire17', team: 'Side B', result: 'LOSS', kills: 15, deaths: 17, assists: 3, hsPercent: 20, damage: 1608, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Voldemort', team: 'Side B', result: 'LOSS', kills: 9, deaths: 17, assists: 3, hsPercent: 11, damage: 1128, utilityDamage: 61, enemyFlashed: 0 },
+      { name: 'thomas', team: 'Side B', result: 'LOSS', kills: 5, deaths: 19, assists: 3, hsPercent: 0, damage: 552, utilityDamage: 0, enemyFlashed: 0 }
     ]
   }
 ];
@@ -637,6 +637,33 @@ async function repairJune11UtilityStatsIfNeeded() {
   });
 }
 
+async function repairJune11MirageResultsIfNeeded() {
+  const match = await db.matches
+    .where('[date+map]')
+    .equals([june11Date, 'Mirage'])
+    .first();
+  if (!match) return;
+
+  if (match.winningTeam !== 'Side A' || match.teamAScore !== 13 || match.teamBScore !== 11) {
+    await db.matches.update(match.id!, {
+      winningTeam: 'Side A',
+      teamAScore: 13,
+      teamBScore: 11
+    });
+  }
+
+  const rows = await db.match_players.where('matchId').equals(match.id!).toArray();
+  if (!rows.length) return;
+
+  await Promise.all(rows.map((row) => {
+    const result = row.team === 'Side A' ? 'WIN' : 'LOSS';
+    return db.match_players.update(row.id!, {
+      result,
+      points: points(result, row.kills, row.assists, row.deaths)
+    });
+  }));
+}
+
 async function replaceWithImportedData() {
   await db.transaction('rw', [db.players, db.player_aliases, db.seasons, db.match_days, db.matches, db.match_players, db.knife_events], async () => {
     await db.knife_events.clear();
@@ -740,5 +767,6 @@ export async function seedIfEmpty() {
   await repairJune3Dust2IfNeeded();
   await importJune11DataIfMissing();
   await repairJune11UtilityStatsIfNeeded();
+  await repairJune11MirageResultsIfNeeded();
   await mergeAmanAliasIfNeeded();
 }
