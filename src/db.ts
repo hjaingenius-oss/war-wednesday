@@ -283,7 +283,7 @@ const june11Matches: RawMatch[] = [
     teamBScore: 8,
     winningTeam: 'Side A',
     rows: [
-      { name: 'amansanghv1', team: 'Side A', result: 'WIN', kills: 29, deaths: 11, assists: 9, hsPercent: 31, damage: 3066, utilityDamage: 97, enemyFlashed: 7 },
+      { name: 'Aman', team: 'Side A', result: 'WIN', kills: 29, deaths: 11, assists: 9, hsPercent: 31, damage: 3066, utilityDamage: 97, enemyFlashed: 7 },
       { name: 'Voldemort', team: 'Side A', result: 'WIN', kills: 21, deaths: 15, assists: 5, hsPercent: 42, damage: 2352, utilityDamage: 55, enemyFlashed: 0 },
       { name: 'DT', team: 'Side A', result: 'WIN', kills: 23, deaths: 18, assists: 4, hsPercent: 62, damage: 2373, utilityDamage: 0, enemyFlashed: 1 },
       { name: 'VPS', team: 'Side A', result: 'WIN', kills: 13, deaths: 13, assists: 2, hsPercent: 38, damage: 1155, utilityDamage: 0, enemyFlashed: 23 },
@@ -311,7 +311,7 @@ const june11Matches: RawMatch[] = [
       { name: 'Radha', team: 'Side A', result: 'LOSS', kills: 15, deaths: 21, assists: 5, hsPercent: 13, damage: 1896, utilityDamage: 16, enemyFlashed: 5 },
       { name: 'fatal_destiny', team: 'Side A', result: 'LOSS', kills: 11, deaths: 21, assists: 3, hsPercent: 54, damage: 1344, utilityDamage: 0, enemyFlashed: 0 },
       { name: 'Hodor bitch!', team: 'Side A', result: 'LOSS', kills: 12, deaths: 22, assists: 4, hsPercent: 66, damage: 1344, utilityDamage: 13, enemyFlashed: 9 },
-      { name: 'amansanghv1', team: 'Side B', result: 'WIN', kills: 26, deaths: 17, assists: 11, hsPercent: 26, damage: 3264, utilityDamage: 7, enemyFlashed: 9 },
+      { name: 'Aman', team: 'Side B', result: 'WIN', kills: 26, deaths: 17, assists: 11, hsPercent: 26, damage: 3264, utilityDamage: 7, enemyFlashed: 9 },
       { name: 'DT', team: 'Side B', result: 'WIN', kills: 28, deaths: 18, assists: 5, hsPercent: 32, damage: 2664, utilityDamage: 132, enemyFlashed: 0 },
       { name: 'VPS', team: 'Side B', result: 'WIN', kills: 24, deaths: 15, assists: 7, hsPercent: 58, damage: 2520, utilityDamage: 64, enemyFlashed: 2 },
       { name: 'Voldemort', team: 'Side B', result: 'WIN', kills: 22, deaths: 15, assists: 5, hsPercent: 59, damage: 2064, utilityDamage: 230, enemyFlashed: 0 },
@@ -328,7 +328,7 @@ const june11Matches: RawMatch[] = [
     winningTeam: 'Side A',
     rows: [
       { name: 'DT', team: 'Side A', result: 'WIN', kills: 34, deaths: 21, assists: 6, hsPercent: 26, damage: 3105, utilityDamage: 0, enemyFlashed: 1 },
-      { name: 'amansanghv1', team: 'Side A', result: 'WIN', kills: 23, deaths: 19, assists: 8, hsPercent: 30, damage: 2438, utilityDamage: 0, enemyFlashed: 5 },
+      { name: 'Aman', team: 'Side A', result: 'WIN', kills: 23, deaths: 19, assists: 8, hsPercent: 30, damage: 2438, utilityDamage: 0, enemyFlashed: 5 },
       { name: 'VPS', team: 'Side A', result: 'WIN', kills: 20, deaths: 19, assists: 6, hsPercent: 35, damage: 2093, utilityDamage: 0, enemyFlashed: 0 },
       { name: 'Voldemort', team: 'Side A', result: 'WIN', kills: 10, deaths: 17, assists: 6, hsPercent: 50, damage: 989, utilityDamage: 140, enemyFlashed: 0 },
       { name: 'thomas', team: 'Side A', result: 'WIN', kills: 11, deaths: 19, assists: 3, hsPercent: 54, damage: 1288, utilityDamage: 0, enemyFlashed: 1 },
@@ -355,7 +355,7 @@ const june11Matches: RawMatch[] = [
       { name: 'Mere Baap', team: 'Side A', result: 'LOSS', kills: 15, deaths: 16, assists: 2, hsPercent: 26, damage: 1824, utilityDamage: 0, enemyFlashed: 0 },
       { name: 'Hodor bitch!', team: 'Side A', result: 'LOSS', kills: 11, deaths: 20, assists: 5, hsPercent: 27, damage: 1152, utilityDamage: 36, enemyFlashed: 2 },
       { name: 'fatal_destiny', team: 'Side A', result: 'LOSS', kills: 8, deaths: 15, assists: 1, hsPercent: 37, damage: 960, utilityDamage: 0, enemyFlashed: 0 },
-      { name: 'amansanghv1', team: 'Side B', result: 'WIN', kills: 0, deaths: 0, assists: 0, hsPercent: 0, damage: 0, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Aman', team: 'Side B', result: 'WIN', kills: 4, deaths: 19, assists: 3, hsPercent: 11, damage: 1850, utilityDamage: 0, enemyFlashed: 0 },
       { name: 'DT', team: 'Side B', result: 'WIN', kills: 32, deaths: 14, assists: 2, hsPercent: 25, damage: 3120, utilityDamage: 58, enemyFlashed: 2 },
       { name: 'VPS', team: 'Side B', result: 'WIN', kills: 19, deaths: 20, assists: 3, hsPercent: 36, damage: 2016, utilityDamage: 0, enemyFlashed: 0 },
       { name: 'Shire17', team: 'Side B', result: 'WIN', kills: 15, deaths: 17, assists: 3, hsPercent: 20, damage: 1608, utilityDamage: 0, enemyFlashed: 0 },
@@ -553,6 +553,44 @@ async function importJune11DataIfMissing() {
   localStorage.setItem('cs2_imported_june11_match_cards_v1', '1');
 }
 
+async function mergeAmanAliasIfNeeded() {
+  const aman = await db.players.where('name').equals('Aman').first();
+  const aliasPlayer = await db.players.where('name').equals('amansanghv1').first();
+  if (!aman?.id || !aliasPlayer?.id || aman.id === aliasPlayer.id) return;
+
+  const aliasRows = await db.player_aliases.where('playerId').equals(aliasPlayer.id).toArray();
+  if (aliasRows.length) {
+    await db.player_aliases.bulkPut(aliasRows.map((row) => ({
+      ...row,
+      playerId: aman.id!
+    })));
+  }
+  const hasAlias = await db.player_aliases
+    .where('playerId')
+    .equals(aman.id)
+    .filter((row) => row.alias === 'amansanghv1')
+    .count();
+  if (!hasAlias) {
+    await db.player_aliases.add({ playerId: aman.id, alias: 'amansanghv1' });
+  }
+
+  const rows = await db.match_players.where('playerId').equals(aliasPlayer.id).toArray();
+  if (rows.length) {
+    await Promise.all(rows.map((row) => db.match_players.update(row.id!, { playerId: aman.id! })));
+  }
+
+  const knifeAsAttacker = await db.knife_events.where('attackerPlayerId').equals(aliasPlayer.id).toArray();
+  if (knifeAsAttacker.length) {
+    await Promise.all(knifeAsAttacker.map((ev) => db.knife_events.update(ev.id!, { attackerPlayerId: aman.id! })));
+  }
+  const knifeAsVictim = await db.knife_events.where('victimPlayerId').equals(aliasPlayer.id).toArray();
+  if (knifeAsVictim.length) {
+    await Promise.all(knifeAsVictim.map((ev) => db.knife_events.update(ev.id!, { victimPlayerId: aman.id! })));
+  }
+
+  await db.players.delete(aliasPlayer.id);
+}
+
 async function repairJune3Dust2IfNeeded() {
   const match = await db.matches
     .where('[date+map]')
@@ -675,4 +713,5 @@ export async function seedIfEmpty() {
   await importJune3DataIfMissing();
   await repairJune3Dust2IfNeeded();
   await importJune11DataIfMissing();
+  await mergeAmanAliasIfNeeded();
 }
