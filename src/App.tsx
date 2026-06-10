@@ -138,7 +138,7 @@ function Dashboard() {
 
 function Leaderboard() {
   const { players, rows, matches, matchDays, knifeEvents } = useData();
-  const [filter, setFilter] = useState('last10');
+  const [filter, setFilter] = useState('all');
   const board = buildLeaderboardRows(players, matchDays, matches, rows, knifeEvents, filter);
   const allTimeBoard = buildLeaderboardRows(players, matchDays, matches, rows, knifeEvents, 'all');
   const fun = buildFunAwards(players, rows, matches, allTimeBoard.allRows, 'all');
