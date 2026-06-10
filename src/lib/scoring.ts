@@ -17,6 +17,8 @@ type ScoreInput = {
   assists: number;
   damage: number;
   headshotPercentage?: number;
+  utilityDamage?: number;
+  enemyFlashed?: number;
   mvps?: number;
   result: MatchResult;
   teamRoundsWon: number;
@@ -44,6 +46,8 @@ export function calculateMatchScore(input: ScoreInput): number {
   const assists = safeNumber(input.assists);
   const damage = safeNumber(input.damage);
   const headshotPercentage = safeNumber(input.headshotPercentage ?? 0);
+  const utilityDamage = safeNumber(input.utilityDamage ?? 0);
+  const enemyFlashed = safeNumber(input.enemyFlashed ?? 0);
   const mvps = safeNumber(input.mvps ?? 0);
   const result = normalizeResult(input.result);
   const teamRoundsWon = safeNumber(input.teamRoundsWon);
@@ -55,6 +59,8 @@ export function calculateMatchScore(input: ScoreInput): number {
   const standardRounds = 21;
   const teamSizeAdjustment = 5 / enemyTeamSize;
   const headshotKills = kills * (headshotPercentage / 100);
+  const utilityBonus = Math.min(5, utilityDamage / 100);
+  const flashBonus = Math.min(4, enemyFlashed / 5);
 
   const rawCombat =
     damage / 120 +
@@ -62,7 +68,9 @@ export function calculateMatchScore(input: ScoreInput): number {
     assists * 0.4 -
     deaths * 0.25 +
     headshotKills * 0.15 +
-    mvps * 0.75;
+    mvps * 0.75 +
+    utilityBonus +
+    flashBonus;
 
   const standardizedCombat = (rawCombat / roundsPlayed) * standardRounds * teamSizeAdjustment;
   const score = baseScore + standardizedCombat + getResultPoints(result);
