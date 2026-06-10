@@ -53,7 +53,8 @@ export type FunAwardKey =
   | 'consistentPerformer'
   | 'firestarter'
   | 'bomber'
-  | 'flashKiller';
+  | 'flashKiller'
+  | 'flasher';
 
 export interface FunAwardWinner {
   key: FunAwardKey;
