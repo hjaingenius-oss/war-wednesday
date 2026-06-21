@@ -35,8 +35,8 @@ export function normalizeResult(result: unknown): MatchResult {
 }
 
 export function getResultPoints(result: MatchResult): number {
-  if (result === 'WIN') return 3;
-  if (result === 'DRAW') return 2;
+  if (result === 'WIN') return 2;
+  if (result === 'DRAW') return 1.5;
   return 1;
 }
 
