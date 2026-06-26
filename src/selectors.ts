@@ -406,11 +406,46 @@ export function calculateWeightedAverageMatchdayScore(
 export function calculateFormScore(matchScores: Array<{ score: number; date: string }>) {
   if (!matchScores.length) return 0;
   const latest = [...matchScores].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
-  const weights = [0.6, 0.3, 0.1];
+  const weights = [0.8, 0.1, 0.1];
   return weightedAverage(latest.map((entry, index) => ({
     value: entry.score,
     weight: weights[index] || 0
   })));
+}
+
+export function calculateSeasonScore(matchdayScores: number[]) {
+  const scores = matchdayScores
+    .slice(0, 10)
+    .map((score) => safeNumber(score));
+
+  if (!scores.length) return 0;
+
+  const weightedItems: Array<{ value: number; weight: number }> = [];
+
+  for (let i = 0; i < Math.min(4, scores.length); i++) {
+    weightedItems.push({
+      value: scores[i],
+      weight: [0.30, 0.25, 0.20, 0.15][i] || 0
+    });
+  }
+
+  const tailScores = scores.slice(4, 10);
+  if (tailScores.length > 0) {
+    const rawTailWeights = tailScores.map((_, index) => 0.5 ** (index / 2));
+    const rawTailTotal = rawTailWeights.reduce((sum, weight) => sum + weight, 0);
+
+    tailScores.forEach((score, index) => {
+      weightedItems.push({
+        value: score,
+        weight: rawTailTotal > 0 ? 0.10 * (rawTailWeights[index] / rawTailTotal) : 0
+      });
+    });
+  }
+
+  const totalWeight = weightedItems.reduce((sum, item) => sum + item.weight, 0);
+  if (totalWeight <= 0) return 0;
+
+  return weightedItems.reduce((sum, item) => sum + item.value * item.weight, 0) / totalWeight;
 }
 
 export function calculateSeasonAvg(matchScores: Array<{ score: number }>) {
@@ -433,9 +468,10 @@ export function calculateWarRating(weightedAverageMatchdayScore: number, attenda
 }
 
 export function calculateFormRating(scores: PlayerLeaderboardRow['matchdayScores']) {
-  return weightedAverage(scores.slice(0, 3).map((s, index) => ({
+  const latest = [...scores].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
+  return weightedAverage(latest.map((s, index) => ({
     value: s.score,
-    weight: [0.6, 0.3, 0.1][index] || 0
+    weight: [0.8, 0.1, 0.1][index] || 0
   })));
 }
 
@@ -948,7 +984,7 @@ function buildPlayerRow(
   const attendanceRate = calculateAttendanceRate(matchdaysPlayed, windowMatchDays.length);
   const matchScoreAvg = calculateSeasonAvg(windowMatchScores);
   const computedScoreTotal = sum(windowMatchScores.map((entry) => entry.score));
-  const seasonAvg = calculateSeasonAvg(allMatchScores);
+  const seasonAvg = calculateSeasonScore(matchdayScores.map((entry) => entry.score));
   const formScore = calculateFormRating(matchdayScores);
   const rankScore = 0.65 * formScore + 0.35 * seasonAvg;
   const knifeKills = player.id ? knifeEvents.filter((e) => e.attackerPlayerId === player.id).length : 0;
