@@ -1,5 +1,5 @@
 import type { KnifeEvent, Match, MatchDay, MatchPlayer, Player } from './types';
-import { calculateMatchScore, normalizeResult, safeKD, safeNumber } from './lib/scoring';
+import { average, clamp, deriveAdr, normalizeResult, safeKD, safeNumber, safeRatio, weightedAverage } from './lib/scoring';
 
 export type PlayerCategory = 'Regular' | 'Impact Player' | 'Cameo' | 'Inactive';
 
@@ -10,6 +10,11 @@ export interface PlayerLeaderboardRow {
   comparisonBadge: string;
   wouldRank?: number;
   smallSample: boolean;
+  rankScore: number;
+  formScore: number;
+  seasonAvg: number;
+  matchScoreAvg: number;
+  computedScoreTotal: number;
   warRating: number;
   formRating: number;
   totalPoints: number;
@@ -83,6 +88,119 @@ export interface FunAwardsResult {
   mapSpecialists: MapSpecialistWinner[];
 }
 
+type MatchScoreBreakdown = {
+  playerId: number;
+  matchId: number;
+  score: number;
+  baseScore: number;
+  performanceRatio: number;
+  resultBonus: number;
+  marginBonus: number;
+  teamCarryBonus: number;
+  adr: number;
+  date: string;
+  team: string;
+};
+
+function getRowTeamSlot(match: Pick<Match, 'teamAName' | 'teamBName'>, row: Pick<MatchPlayer, 'team'>) {
+  if (row.team && row.team === match.teamBName) return 'B';
+  if (row.team && row.team === match.teamAName) return 'A';
+  return 'A';
+}
+
+function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]): MatchScoreBreakdown[] {
+  const rounds = Math.max(1, safeNumber(match.teamAScore) + safeNumber(match.teamBScore));
+  const rowStats = rows.map((row) => {
+    const adr = deriveAdr(safeNumber(row.damage), rounds);
+    const kpr = safeNumber(row.kills) / rounds;
+    const dpr = safeNumber(row.deaths) / rounds;
+    const apr = safeNumber(row.assists) / rounds;
+    const udr = safeNumber(row.utilityDamage) / rounds;
+    const efr = safeNumber(row.enemyFlashed) / rounds;
+    const mvpr = safeNumber(row.mvps) / rounds;
+    return {
+      row,
+      adr,
+      kpr,
+      dpr,
+      apr,
+      udr,
+      efr,
+      mvpr
+    };
+  });
+
+  const averages = {
+    adr: average(rowStats.map((item) => item.adr)),
+    kpr: average(rowStats.map((item) => item.kpr)),
+    dpr: average(rowStats.map((item) => item.dpr)),
+    apr: average(rowStats.map((item) => item.apr)),
+    udr: average(rowStats.map((item) => item.udr)),
+    efr: average(rowStats.map((item) => item.efr)),
+    mvpr: average(rowStats.map((item) => item.mvpr))
+  };
+
+  const prelim = rowStats.map((item) => {
+    const adrRatio = clamp(safeRatio(item.adr, averages.adr), 0.5, 1.8);
+    const kprRatio = clamp(safeRatio(item.kpr, averages.kpr), 0.5, 1.8);
+    const survivalRatio = clamp(safeRatio(averages.dpr, item.dpr), 0.5, 1.8);
+    const assistRatio = clamp(safeRatio(item.apr, averages.apr), 0.5, 1.8);
+    const utilityRatio = clamp(safeRatio(item.udr, averages.udr), 0.5, 1.8);
+    const flashRatio = clamp(safeRatio(item.efr, averages.efr), 0.5, 1.8);
+    const mvpRatio = clamp(safeRatio(item.mvpr, averages.mvpr), 0.5, 1.8);
+
+    const performanceRatio =
+      0.35 * adrRatio +
+      0.25 * kprRatio +
+      0.15 * survivalRatio +
+      0.10 * assistRatio +
+      0.06 * utilityRatio +
+      0.05 * flashRatio +
+      0.04 * mvpRatio;
+
+    return {
+      ...item,
+      baseScore: 50 * performanceRatio,
+      performanceRatio
+    };
+  });
+
+  const teamAverages = new Map<string, number>();
+  for (const team of [...new Set(rows.map((row) => row.team || 'Unknown'))]) {
+    const teamBaseScores = prelim.filter((item) => (item.row.team || 'Unknown') === team).map((item) => item.baseScore);
+    teamAverages.set(team || 'Unknown', average(teamBaseScores));
+  }
+
+  const scoreMap = new Map<number, MatchScoreBreakdown>();
+  for (const item of prelim) {
+    const teamSlot = getRowTeamSlot(match, item.row);
+    const teamRoundsWon = teamSlot === 'B' ? safeNumber(match.teamBScore) : safeNumber(match.teamAScore);
+    const enemyRoundsWon = teamSlot === 'B' ? safeNumber(match.teamAScore) : safeNumber(match.teamBScore);
+    const result = normalizeResult(item.row.result);
+    const resultBonus = result === 'WIN' ? 5 : result === 'DRAW' ? 2 : 0;
+    const margin = teamRoundsWon - enemyRoundsWon;
+    const marginBonus = clamp(margin * 0.35, -3, 3);
+    const teamKey = item.row.team || 'Unknown';
+    const teamCarryBonus = clamp(((item.baseScore - (teamAverages.get(teamKey) || 0)) / 10), -3, 3);
+    const score = clamp(item.baseScore + resultBonus + marginBonus + teamCarryBonus, 1, 100);
+    scoreMap.set(item.row.playerId, {
+      playerId: item.row.playerId,
+      matchId: match.id || 0,
+      score,
+      baseScore: item.baseScore,
+      performanceRatio: item.performanceRatio,
+      resultBonus,
+      marginBonus,
+      teamCarryBonus,
+      adr: item.adr,
+      date: match.date,
+      team: teamKey
+    });
+  }
+
+  return [...scoreMap.values()];
+}
+
 export function calculateTotalPointsForMatch(row: Pick<MatchPlayer, 'result' | 'kills' | 'assists' | 'deaths'>) {
   const resultPoints = row.result === 'WIN' ? 5 : row.result === 'DRAW' ? 3 : 1;
   const damagePart = safeNumber((row as MatchPlayer).damage) ? safeNumber((row as MatchPlayer).damage) / 250 : 0;
@@ -91,40 +209,12 @@ export function calculateTotalPointsForMatch(row: Pick<MatchPlayer, 'result' | '
 
 export function calculateMatchValue(
   row: Pick<MatchPlayer, 'result' | 'kills' | 'deaths' | 'assists' | 'damage' | 'hsPercent' | 'utilityDamage' | 'enemyFlashed' | 'playerId'>,
-  match?: Pick<Match, 'teamAScore' | 'teamBScore'>,
+  match?: Pick<Match, 'teamAScore' | 'teamBScore' | 'teamAName' | 'teamBName'>,
   matchRows: Array<Pick<MatchPlayer, 'result' | 'kills' | 'assists' | 'deaths' | 'playerId' | 'team' | 'mvps'>> = []
 ) {
-  const result = normalizeResult(row.result);
-  const scoreA = safeNumber(match?.teamAScore);
-  const scoreB = safeNumber(match?.teamBScore);
-  let teamRoundsWon = result === 'WIN' ? Math.max(scoreA, scoreB) : result === 'LOSS' ? Math.min(scoreA, scoreB) : scoreA;
-  let enemyRoundsWon = result === 'WIN' ? Math.min(scoreA, scoreB) : result === 'LOSS' ? Math.max(scoreA, scoreB) : scoreB;
-  if (scoreA <= 0 && scoreB <= 0) {
-    teamRoundsWon = 0;
-    enemyRoundsWon = 0;
-  }
-
-  let enemyTeamSize = 5;
-  const me = matchRows.find((r) => r.playerId === row.playerId);
-  if (me?.team) {
-    const enemies = matchRows.filter((r) => r.team !== me.team);
-    if (enemies.length > 0) enemyTeamSize = enemies.length;
-  }
-
-  return calculateMatchScore({
-    kills: safeNumber(row.kills),
-    deaths: safeNumber(row.deaths),
-    assists: safeNumber(row.assists),
-    damage: safeNumber((row as MatchPlayer).damage),
-    headshotPercentage: safeNumber((row as MatchPlayer).hsPercent),
-    utilityDamage: safeNumber((row as MatchPlayer).utilityDamage),
-    enemyFlashed: safeNumber((row as MatchPlayer).enemyFlashed),
-    mvps: safeNumber((row as MatchPlayer).mvps),
-    result,
-    teamRoundsWon,
-    enemyRoundsWon,
-    enemyTeamSize
-  });
+  if (!match) return 0;
+  const matchScores = calculateMatchScoresForMatch(match as Match, matchRows as MatchPlayer[]);
+  return matchScores.find((item) => item.playerId === row.playerId)?.score || 0;
 }
 
 export function getMatchWindow(matches: Match[], filter: string) {
@@ -160,6 +250,23 @@ export function calculateMatchdayScores(
     rowsByMatchId.set(row.matchId, arr);
   }
 
+  const normalizedMatchScores = new Map<number, Map<number, number>>();
+  for (const [matchId, matchRows] of rowsByMatchId.entries()) {
+    const match = matchById.get(matchId);
+    if (!match) continue;
+    const details = calculateMatchScoresForMatch(match, matchRows);
+    const rawScores = details.map((detail) => detail.score);
+    const matchAverage = average(rawScores);
+    const perPlayer = new Map<number, number>();
+    for (let index = 0; index < matchRows.length; index += 1) {
+      const row = matchRows[index];
+      const raw = rawScores[index] ?? 0;
+      const centered = 50 + (raw - matchAverage) * 0.8;
+      perPlayer.set(row.playerId, Math.max(1, Math.min(100, centered)));
+    }
+    normalizedMatchScores.set(matchId, perPlayer);
+  }
+
   for (const player of players) {
     if (player.id) byPlayer.set(player.id, new Map());
   }
@@ -171,7 +278,8 @@ export function calculateMatchdayScores(
     if (!byPlayer.has(row.playerId)) byPlayer.set(row.playerId, new Map());
     const playerDays = byPlayer.get(row.playerId)!;
     const values = playerDays.get(matchDayId) || [];
-    values.push(calculateMatchValue(row, match, rowsByMatchId.get(row.matchId) || []));
+    const normalized = normalizedMatchScores.get(row.matchId)?.get(row.playerId);
+    values.push(normalized ?? calculateMatchValue(row, match, rowsByMatchId.get(row.matchId) || []));
     playerDays.set(matchDayId, values);
   }
 
@@ -210,6 +318,21 @@ export function calculateWeightedAverageMatchdayScore(
     totalWeight += weight;
   }
   return totalWeight ? weighted / totalWeight : 0;
+}
+
+export function calculateFormScore(matchScores: Array<{ score: number; date: string }>) {
+  if (!matchScores.length) return 0;
+  const now = Date.now();
+  return weightedAverage(matchScores.map((entry) => {
+    const scoreDate = new Date(`${entry.date}T00:00:00`).getTime();
+    const daysAgo = Number.isFinite(scoreDate) ? Math.max(0, (now - scoreDate) / (1000 * 60 * 60 * 24)) : 0;
+    const weight = 0.5 ** (daysAgo / 21);
+    return { value: entry.score, weight };
+  }));
+}
+
+export function calculateSeasonAvg(matchScores: Array<{ score: number }>) {
+  return average(matchScores.map((entry) => entry.score));
 }
 
 export function calculateAttendanceRate(playerMatchdaysPlayed: number, totalMatchdays: number) {
@@ -262,6 +385,29 @@ export function calculateComparisonBadge(
   return 'Needs More Games';
 }
 
+function buildMatchScoreHistory(matches: Match[], rows: MatchPlayer[]) {
+  const byMatch = new Map<number, MatchPlayer[]>();
+  for (const row of rows) {
+    const arr = byMatch.get(row.matchId) || [];
+    arr.push(row);
+    byMatch.set(row.matchId, arr);
+  }
+
+  const byPlayer = new Map<number, Array<{ score: number; date: string; matchId: number }>>();
+  for (const match of matches) {
+    const matchRows = byMatch.get(match.id || 0) || [];
+    if (!matchRows.length) continue;
+    const matchScores = calculateMatchScoresForMatch(match, matchRows);
+    for (const item of matchScores) {
+      const arr = byPlayer.get(item.playerId) || [];
+      arr.push({ score: item.score, date: match.date, matchId: match.id || 0 });
+      byPlayer.set(item.playerId, arr);
+    }
+  }
+
+  return byPlayer;
+}
+
 export function buildLeaderboardRows(
   players: Player[],
   matchDays: MatchDay[],
@@ -280,30 +426,35 @@ export function buildLeaderboardRows(
     .sort((a, b) => b.eventDate.localeCompare(a.eventDate));
 
   const matchdayScores = calculateMatchdayScores(players, windowMatchDays, windowMatches, windowRows);
-  const matchById = new Map(windowMatches.map((m) => [m.id, m]));
-  const baseRows = players.map((player) => buildPlayerRow(
-    player,
-    windowRows,
-    windowKnifeEvents,
-    matchdayScores.get(player.id || 0) || [],
-    windowMatchDays,
-    matchById
-  ));
+  const allHistory = buildMatchScoreHistory(matches, rows);
+  const windowHistory = buildMatchScoreHistory(windowMatches, windowRows);
+  const baseRows = players.map((player) => {
+    const playerId = player.id || 0;
+    return buildPlayerRow(
+      player,
+      windowRows,
+      windowKnifeEvents,
+      matchdayScores.get(playerId) || [],
+      windowMatchDays,
+      allHistory.get(playerId) || [],
+      windowHistory.get(playerId) || []
+    );
+  });
 
   const prelimRegulars = baseRows.filter((r) => r.matchdaysPlayed > 0 && (r.attendanceRate >= 0.5 || r.matchdaysPlayed >= 5));
-  const regularMedianWarRating = median(prelimRegulars.map((r) => r.warRating));
+  const regularMedianWarRating = median(prelimRegulars.map((r) => r.rankScore));
 
   const classified = baseRows.map((row) => ({
     ...row,
-    category: classifyPlayer(row.attendanceRate, row.matchdaysPlayed, row.warRating, regularMedianWarRating)
+    category: classifyPlayer(row.attendanceRate, row.matchdaysPlayed, row.rankScore, regularMedianWarRating)
   }));
 
   const regulars = classified.filter((r) => r.category === 'Regular').sort(sortMainBoard);
   const withBadges = classified.map((row) => {
-    const badge = calculateComparisonBadge(row, regulars, regularMedianWarRating);
+    const badge = calculateComparisonBadge({ category: row.category, attendanceRate: row.attendanceRate, warRating: row.rankScore }, regulars, regularMedianWarRating);
     const wouldRank = row.category === 'Regular' || row.category === 'Inactive'
       ? undefined
-      : regulars.filter((r) => r.warRating > row.warRating).length + 1;
+      : regulars.filter((r) => r.rankScore > row.rankScore).length + 1;
     return { ...row, comparisonBadge: badge, wouldRank };
   });
 
@@ -667,17 +818,17 @@ export function buildFunAwards(
 }
 
 export function sortMainBoard(a: PlayerLeaderboardRow, b: PlayerLeaderboardRow) {
-  return b.warRating - a.warRating ||
-    b.formRating - a.formRating ||
+  return b.rankScore - a.rankScore ||
+    b.formScore - a.formScore ||
     b.kd - a.kd ||
     b.winPct - a.winPct ||
-    b.totalPoints - a.totalPoints ||
+    b.computedScoreTotal - a.computedScoreTotal ||
     b.kills - a.kills;
 }
 
 export function sortImpactBoard(a: PlayerLeaderboardRow, b: PlayerLeaderboardRow) {
-  return b.warRating - a.warRating ||
-    b.formRating - a.formRating ||
+  return b.rankScore - a.rankScore ||
+    b.formScore - a.formScore ||
     b.kd - a.kd ||
     b.matchdaysPlayed - a.matchdaysPlayed;
 }
@@ -688,14 +839,9 @@ function buildPlayerRow(
   knifeEvents: KnifeEvent[],
   matchdayScores: PlayerLeaderboardRow['matchdayScores'],
   windowMatchDays: MatchDay[],
-  matchById: Map<number | undefined, Match>
+  allMatchScores: Array<{ score: number; date: string; matchId: number }>,
+  windowMatchScores: Array<{ score: number; date: string; matchId: number }>
 ): PlayerLeaderboardRow {
-  const rowsByMatchId = new Map<number, MatchPlayer[]>();
-  for (const row of rows) {
-    const arr = rowsByMatchId.get(row.matchId) || [];
-    arr.push(row);
-    rowsByMatchId.set(row.matchId, arr);
-  }
   const playerRows = player.id ? rows.filter((r) => r.playerId === player.id) : [];
   const kills = sum(playerRows.map((r) => safeNumber(r.kills)));
   const deaths = sum(playerRows.map((r) => safeNumber(r.deaths)));
@@ -711,9 +857,11 @@ function buildPlayerRow(
   const matchesPlayed = playerRows.length;
   const matchdaysPlayed = matchdayScores.length;
   const attendanceRate = calculateAttendanceRate(matchdaysPlayed, windowMatchDays.length);
-  const weightedAverage = calculateWeightedAverageMatchdayScore(matchdayScores, windowMatchDays);
-  const warRating = calculateWarRating(weightedAverage, attendanceRate, matchdaysPlayed);
-  const formRating = calculateFormRating(matchdayScores);
+  const matchScoreAvg = calculateSeasonAvg(windowMatchScores);
+  const computedScoreTotal = sum(windowMatchScores.map((entry) => entry.score));
+  const seasonAvg = calculateSeasonAvg(allMatchScores);
+  const formScore = calculateFormScore(allMatchScores);
+  const rankScore = 0.75 * formScore + 0.25 * seasonAvg;
   const knifeKills = player.id ? knifeEvents.filter((e) => e.attackerPlayerId === player.id).length : 0;
   const knifeDeaths = player.id ? knifeEvents.filter((e) => e.victimPlayerId === player.id).length : 0;
 
@@ -723,8 +871,13 @@ function buildPlayerRow(
     category: 'Inactive',
     comparisonBadge: '',
     smallSample: matchdaysPlayed > 0 && matchdaysPlayed < 3,
-    warRating,
-    formRating,
+    rankScore,
+    formScore,
+    seasonAvg,
+    matchScoreAvg,
+    computedScoreTotal,
+    warRating: rankScore,
+    formRating: formScore,
     totalPoints,
     attendanceRate,
     matchdaysPlayed,
@@ -751,7 +904,7 @@ function buildPlayerRow(
     games30PlusKills: playerRows.filter((r) => safeNumber(r.kills) >= 30).length,
     kd: safeKD(kills, deaths),
     avgPoints: matchesPlayed ? totalPoints / matchesPlayed : 0,
-    bestMatchValue: playerRows.length ? Math.max(...playerRows.map((r) => calculateMatchValue(r, matchById.get(r.matchId), rowsByMatchId.get(r.matchId) || []))) : 0,
+    bestMatchValue: allMatchScores.length ? Math.max(...allMatchScores.map((entry) => entry.score)) : 0,
     matchdayScores
   };
 }
@@ -948,11 +1101,6 @@ function pickBest<T>(items: T[], primary: (item: T) => number, tieBreakers: Arra
 
 function sum(values: number[]) {
   return values.reduce((total, value) => total + safeNumber(value), 0);
-}
-
-function average(values: number[]) {
-  const clean = values.map(safeNumber).filter((n) => Number.isFinite(n));
-  return clean.length ? sum(clean) / clean.length : 0;
 }
 
 function median(values: number[]) {

@@ -11,21 +11,6 @@ export function calculatePoints(row: Pick<MatchPlayer, 'result'|'kills'|'assists
   return resultPoints(row.result) + safeNumber(row.kills) + safeNumber(row.assists) * 0.5 - safeNumber(row.deaths) * 0.5 + damagePart;
 }
 
-type ScoreInput = {
-  kills: number;
-  deaths: number;
-  assists: number;
-  damage: number;
-  headshotPercentage?: number;
-  utilityDamage?: number;
-  enemyFlashed?: number;
-  mvps?: number;
-  result: MatchResult;
-  teamRoundsWon: number;
-  enemyRoundsWon: number;
-  enemyTeamSize?: number;
-};
-
 export function normalizeResult(result: unknown): MatchResult {
   const value = String(result ?? '').toUpperCase();
   if (value === 'WIN') return 'WIN';
@@ -35,46 +20,45 @@ export function normalizeResult(result: unknown): MatchResult {
 }
 
 export function getResultPoints(result: MatchResult): number {
-  if (result === 'WIN') return 2;
-  if (result === 'DRAW') return 1.5;
+  if (result === 'WIN') return 5;
+  if (result === 'DRAW') return 3;
   return 1;
 }
 
-export function calculateMatchScore(input: ScoreInput): number {
-  const kills = safeNumber(input.kills);
-  const deaths = safeNumber(input.deaths);
-  const assists = safeNumber(input.assists);
-  const damage = safeNumber(input.damage);
-  const headshotPercentage = safeNumber(input.headshotPercentage ?? 0);
-  const utilityDamage = safeNumber(input.utilityDamage ?? 0);
-  const enemyFlashed = safeNumber(input.enemyFlashed ?? 0);
-  const mvps = safeNumber(input.mvps ?? 0);
-  const result = normalizeResult(input.result);
-  const teamRoundsWon = safeNumber(input.teamRoundsWon);
-  const enemyRoundsWon = safeNumber(input.enemyRoundsWon);
-  const roundsPlayed = Math.max(1, teamRoundsWon + enemyRoundsWon);
-  const enemyTeamSize = Math.max(1, safeNumber(input.enemyTeamSize ?? 5));
+export function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
 
-  const baseScore = 3;
-  const standardRounds = 21;
-  const teamSizeAdjustment = 5 / enemyTeamSize;
-  const headshotKills = kills * (headshotPercentage / 100);
-  const utilityBonus = Math.min(5, utilityDamage / 100);
-  const flashBonus = Math.min(4, enemyFlashed / 5);
+export function average(values: number[]) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
 
-  const rawCombat =
-    damage / 120 +
-    kills * 1.2 +
-    assists * 0.4 -
-    deaths * 0.25 +
-    headshotKills * 0.15 +
-    mvps * 0.75 +
-    utilityBonus +
-    flashBonus;
+export function safeRatio(value: number, averageValue: number) {
+  const safeValue = safeNumber(value);
+  const safeAverage = safeNumber(averageValue);
+  if (safeAverage <= 0) return 1;
+  return safeValue / safeAverage;
+}
 
-  const standardizedCombat = (rawCombat / roundsPlayed) * standardRounds * teamSizeAdjustment;
-  const score = baseScore + standardizedCombat + getResultPoints(result);
-  return Number(Math.max(1, score).toFixed(2));
+export function deriveAdr(damage: number, rounds: number) {
+  const safeDamage = safeNumber(damage);
+  const safeRounds = Math.max(1, safeNumber(rounds));
+  if (safeDamage <= 0) return 0;
+  if (safeDamage > 300) return safeDamage / safeRounds;
+  return safeDamage;
+}
+
+export function weightedAverage(values: Array<{ value: number; weight: number }>) {
+  let totalValue = 0;
+  let totalWeight = 0;
+  for (const item of values) {
+    const safeWeight = safeNumber(item.weight);
+    if (safeWeight <= 0) continue;
+    totalValue += safeNumber(item.value) * safeWeight;
+    totalWeight += safeWeight;
+  }
+  return totalWeight > 0 ? totalValue / totalWeight : 0;
 }
 
 export function safeKD(kills: number, deaths: number) {

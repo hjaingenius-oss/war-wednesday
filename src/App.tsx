@@ -23,6 +23,7 @@ const ADMIN_ENABLED = import.meta.env.DEV || import.meta.env.VITE_ENABLE_ADMIN =
 
 const fmt = (n: number) => Number(n.toFixed(2));
 const fmt1 = (n: number) => Number(n.toFixed(1));
+const fmtWhole = (n: number) => (Number.isFinite(n) ? Math.round(n) : '—');
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 const rank = ['Rank #1', 'Rank #2', 'Rank #3'];
 const teamNames = ['Side A', 'Side B'];
@@ -144,12 +145,12 @@ function Leaderboard() {
   const fun = buildFunAwards(players, rows, matches, allTimeBoard.allRows, 'all');
   const playerTitles = buildPlayerFunTitleMap(fun);
   return <div className="leaderboard-page"><div className="card"><h2>Leaderboard</h2><div className="actions"><select value={filter} onChange={(e)=>setFilter(e.target.value)}><option value="last10">Last 10 matches</option><option value="last20">Last 20 matches</option><option value="all">All matches</option></select></div>
-  <div className="helper-grid"><p><b>Score</b><br/>Player performance score based on damage, utility damage, flashes, kills, K/D, assists, headshots, and a small result bonus.</p><p><b>Form</b><br/>Recent performance over the player's last 3 matchdays. * means small sample.</p><p><b>Total Points</b><br/>Season grind points from your match contributions.</p></div></div>
-  <section className="card"><h2>Main Ranked Board</h2><div className="table-wrap"><table><thead><tr><th>Player</th><th>Score</th><th>Form</th><th>Total Points</th><th>Matches<br/>Played</th><th>Win %</th><th>KDA</th><th>K/D</th><th>Damage</th><th>UD</th><th>UD<br/>/Game</th><th>EF</th><th>EF<br/>/Game</th><th>DMG<br/>/Game</th><th>HS</th><th>HS<br/>/Game</th><th>10+ K</th><th>20+ K</th><th>30+ K</th><th>Knife<br/>Kills</th></tr></thead><tbody>
-  {board.mainRows.map((r,i)=><tr key={r.playerId}><td><NavLink to={`/players/${r.playerId}`} className="player-link">{renderPlayerIdentity(r.name, playerTitles.get(r.playerId) || [], i)}</NavLink></td><td className="war-cell">{Math.round(r.warRating)}</td><td><span className="form-cell">{Math.round(r.formRating)}{r.smallSample ? ' *' : ''}</span></td><td>{Math.round(r.totalPoints)}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{`${r.kills}/${r.deaths}/${r.assists}`}</td><td>{fmt1(r.kd)}</td><td>{Math.round(r.damage)}</td><td>{Math.round(r.utilityDamage)}</td><td>{fmt1(r.utilityDamagePerGame)}</td><td>{Math.round(r.enemyFlashed)}</td><td>{fmt1(r.enemyFlashedPerGame)}</td><td>{fmt1(r.damagePerGame)}</td><td>{Math.round(r.headshotKills)}</td><td>{fmt1(r.headshotKillsPerGame)}</td><td>{r.games10PlusKills}</td><td>{r.games20PlusKills}</td><td>{r.games30PlusKills}</td><td>{r.knifeKills}</td></tr>)}
+  <div className="helper-grid"><p><b>Rank Score</b><br/>Balanced score from match performance, recent form, and overall season quality.</p><p><b>Form</b><br/>Recent match performance with stronger weight on more recent games. * means small sample.</p><p><b>Season Avg</b><br/>Average score across the season.</p><p><b>Match Score Avg</b><br/>Average score in the selected leaderboard window.</p></div></div>
+  <section className="card"><h2>Main Ranked Board</h2><div className="table-wrap"><table><thead><tr><th>Player</th><th>Rank Score</th><th>Form</th><th>Season Avg</th><th>Match Score Avg</th><th>Matches<br/>Played</th><th>Win %</th><th>KDA</th><th>K/D</th><th>Damage</th><th>UD</th><th>UD<br/>/Game</th><th>EF</th><th>EF<br/>/Game</th><th>DMG<br/>/Game</th><th>HS</th><th>HS<br/>/Game</th><th>10+ K</th><th>20+ K</th><th>30+ K</th><th>Knife<br/>Kills</th></tr></thead><tbody>
+  {board.mainRows.map((r,i)=><tr key={r.playerId}><td><NavLink to={`/players/${r.playerId}`} className="player-link">{renderPlayerIdentity(r.name, playerTitles.get(r.playerId) || [], i)}</NavLink></td><td className="war-cell">{fmtWhole(r.rankScore)}</td><td><span className="form-cell">{fmtWhole(r.formScore)}{r.smallSample ? ' *' : ''}</span></td><td>{fmtWhole(r.seasonAvg)}</td><td>{fmtWhole(r.matchScoreAvg)}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{`${r.kills}/${r.deaths}/${r.assists}`}</td><td>{fmt1(r.kd)}</td><td>{Math.round(r.damage)}</td><td>{Math.round(r.utilityDamage)}</td><td>{fmt1(r.utilityDamagePerGame)}</td><td>{Math.round(r.enemyFlashed)}</td><td>{fmt1(r.enemyFlashedPerGame)}</td><td>{fmt1(r.damagePerGame)}</td><td>{Math.round(r.headshotKills)}</td><td>{fmt1(r.headshotKillsPerGame)}</td><td>{r.games10PlusKills}</td><td>{r.games20PlusKills}</td><td>{r.games30PlusKills}</td><td>{r.knifeKills}</td></tr>)}
   </tbody></table></div></section>
-  <section className="card"><h2>Impact Board</h2><p className="muted">Highlights strong low-attendance and small-sample players without affecting official ranks.</p><div className="table-wrap"><table><thead><tr><th>Player</th><th>Score</th><th>Form</th><th>Total Points</th><th>Matches<br/>Played</th><th>Win %</th><th>KDA</th><th>K/D</th><th>Damage</th><th>UD</th><th>UD<br/>/Game</th><th>EF</th><th>EF<br/>/Game</th><th>DMG<br/>/Game</th><th>HS</th><th>HS<br/>/Game</th><th>10+ K</th><th>20+ K</th><th>30+ K</th><th>Knife<br/>Kills</th><th>Comparison</th></tr></thead><tbody>
-  {board.impactRows.map((r)=><tr key={r.playerId}><td><NavLink to={`/players/${r.playerId}`} className="player-link">{renderPlayerIdentity(r.name, playerTitles.get(r.playerId) || [])}</NavLink></td><td className="war-cell">{Math.round(r.warRating)}</td><td><span className="form-cell">{Math.round(r.formRating)}{r.smallSample ? ' *' : ''}</span></td><td>{Math.round(r.totalPoints)}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{`${r.kills}/${r.deaths}/${r.assists}`}</td><td>{fmt1(r.kd)}</td><td>{Math.round(r.damage)}</td><td>{Math.round(r.utilityDamage)}</td><td>{fmt1(r.utilityDamagePerGame)}</td><td>{Math.round(r.enemyFlashed)}</td><td>{fmt1(r.enemyFlashedPerGame)}</td><td>{fmt1(r.damagePerGame)}</td><td>{Math.round(r.headshotKills)}</td><td>{fmt1(r.headshotKillsPerGame)}</td><td>{r.games10PlusKills}</td><td>{r.games20PlusKills}</td><td>{r.games30PlusKills}</td><td>{r.knifeKills}</td><td><span className="comparison-badge">{r.comparisonBadge}</span></td></tr>)}
+  <section className="card"><h2>Impact Board</h2><p className="muted">Highlights strong low-attendance and small-sample players without affecting official ranks.</p><div className="table-wrap"><table><thead><tr><th>Player</th><th>Rank Score</th><th>Form</th><th>Season Avg</th><th>Match Score Avg</th><th>Matches<br/>Played</th><th>Win %</th><th>KDA</th><th>K/D</th><th>Damage</th><th>UD</th><th>UD<br/>/Game</th><th>EF</th><th>EF<br/>/Game</th><th>DMG<br/>/Game</th><th>HS</th><th>HS<br/>/Game</th><th>10+ K</th><th>20+ K</th><th>30+ K</th><th>Knife<br/>Kills</th><th>Comparison</th></tr></thead><tbody>
+  {board.impactRows.map((r)=><tr key={r.playerId}><td><NavLink to={`/players/${r.playerId}`} className="player-link">{renderPlayerIdentity(r.name, playerTitles.get(r.playerId) || [])}</NavLink></td><td className="war-cell">{fmtWhole(r.rankScore)}</td><td><span className="form-cell">{fmtWhole(r.formScore)}{r.smallSample ? ' *' : ''}</span></td><td>{fmtWhole(r.seasonAvg)}</td><td>{fmtWhole(r.matchScoreAvg)}</td><td>{r.matchesPlayed}</td><td>{fmt1(r.winPct)}%</td><td>{`${r.kills}/${r.deaths}/${r.assists}`}</td><td>{fmt1(r.kd)}</td><td>{Math.round(r.damage)}</td><td>{Math.round(r.utilityDamage)}</td><td>{fmt1(r.utilityDamagePerGame)}</td><td>{Math.round(r.enemyFlashed)}</td><td>{fmt1(r.enemyFlashedPerGame)}</td><td>{fmt1(r.damagePerGame)}</td><td>{Math.round(r.headshotKills)}</td><td>{fmt1(r.headshotKillsPerGame)}</td><td>{r.games10PlusKills}</td><td>{r.games20PlusKills}</td><td>{r.games30PlusKills}</td><td>{r.knifeKills}</td><td><span className="comparison-badge">{r.comparisonBadge}</span></td></tr>)}
   </tbody></table></div></section></div>;
 }
 
@@ -267,7 +268,32 @@ function PlayerProfile() {
   const wins = pr.filter((r)=>r.result==='WIN').length, losses = pr.filter((r)=>r.result==='LOSS').length;
   const knifeKills = knifeEvents.filter((e) => e.attackerPlayerId === pid).length;
   const knifeDeaths = knifeEvents.filter((e) => e.victimPlayerId === pid).length;
-  const trend = profile?.matchdayScores.map((s)=>({ match: s.date.slice(5), score: fmt1(s.score) })) || [];
+  const matchById = useMemo(() => new Map(matches.map((match) => [match.id, match])), [matches]);
+  const trend = useMemo(() => {
+    const seen = new Set<number>();
+    const rowsByMatch = new Map<number, MatchPlayer[]>();
+    for (const row of pr) {
+      const arr = rowsByMatch.get(row.matchId) || [];
+      arr.push(row);
+      rowsByMatch.set(row.matchId, arr);
+    }
+    return pr
+      .map((row) => {
+        if (seen.has(row.matchId)) return null;
+        seen.add(row.matchId);
+        const match = matchById.get(row.matchId);
+        if (!match) return null;
+        const matchRows = rowsByMatch.get(row.matchId) || [];
+        return {
+          matchId: row.matchId,
+          match: getMatchDisplayId(row.matchId, matchDisplayIds),
+          date: match.date,
+          score: fmt1(calculateMatchValue(row, match, matchRows))
+        };
+      })
+      .filter((value): value is { matchId: number; match: string; date: string; score: number } => Boolean(value))
+      .sort((a, b) => a.date.localeCompare(b.date) || a.matchId - b.matchId);
+  }, [pr, matchById, matchDisplayIds]);
   const knifeHistory = knifeEvents.filter((e) => e.attackerPlayerId === pid || e.victimPlayerId === pid).slice().reverse();
   const games10 = pr.filter((r) => r.kills >= 10).length;
   const games20 = pr.filter((r) => r.kills >= 20).length;
@@ -281,7 +307,7 @@ function PlayerProfile() {
   <p>Kills {kills} | Deaths {deaths} | Assists {assists}</p>
   <p>10+ Kill Games {games10} | 20+ Kill Games {games20} | 30+ Kill Games {games30}</p>
   {profile?.comparisonBadge && <p><span className="comparison-badge">{profile.comparisonBadge}</span></p>}
-  <h3>Performance Trend</h3><div className="chart"><ResponsiveContainer width="100%" height={240}><LineChart data={trend}><XAxis dataKey="match"/><YAxis/><Tooltip/><Line type="monotone" dataKey="score" stroke="#b8ff2c"/></LineChart></ResponsiveContainer></div>
+  <h3>Performance by Game</h3><p className="muted">Each point is one game, ordered from oldest to newest.</p><div className="chart"><ResponsiveContainer width="100%" height={240}><LineChart data={trend}><XAxis dataKey="match" interval={0} angle={-25} textAnchor="end" height={60} tickMargin={12}/><YAxis/><Tooltip/><Line type="monotone" dataKey="score" stroke="#b8ff2c" dot={false}/></LineChart></ResponsiveContainer></div>
   <h3>Knife History</h3>{knifeHistory.map((e)=><div key={e.id} className="row"><span>Match ID: {getMatchDisplayId(e.matchId, matchDisplayIds)}</span><span>{receiptText(players, e.attackerPlayerId, e.victimPlayerId)}</span></div>)}
   <h3>Recent Matches</h3>{pr.slice(-5).reverse().map((r)=><div key={r.id} className="row"><span>{matches.find((m)=>m.id===r.matchId)?.date}</span><span>Match ID: {getMatchDisplayId(r.matchId, matchDisplayIds)}</span><span>{fmt(calculateTotalPointsForMatch(r))} Total Points</span></div>)}
   </div>;

@@ -574,10 +574,10 @@ const june24Matches: RawMatch[] = [
       { name: 'Manson', team: 'Side A', result: 'WIN', kills: 9, deaths: 16, assists: 7, mvps: 0 },
       { name: 'Mere Baap', team: 'Side A', result: 'WIN', kills: 10, deaths: 16, assists: 5, mvps: 1 },
       { name: 'VPS', team: 'Side B', result: 'LOSS', kills: 20, deaths: 13, assists: 1, mvps: 2 },
-      { name: 'thomas', team: 'Side B', result: 'LOSS', kills: 14, deaths: 18, assists: 1, mvps: 0 },
-      { name: 'DrKush', team: 'Side B', result: 'LOSS', kills: 12, deaths: 16, assists: 4, mvps: 1 },
-      { name: 'Voldemort', team: 'Side B', result: 'LOSS', kills: 11, deaths: 14, assists: 4, mvps: 0 },
-      { name: 'Aks', team: 'Side B', result: 'LOSS', kills: 8, deaths: 17, assists: 4, mvps: 0 }
+      { name: 'thomas', team: 'Side B', result: 'LOSS', kills: 14, deaths: 18, assists: 1, mvps: 0, hsPercent: 53, damage: 1235, utilityDamage: 0, enemyFlashed: 2 },
+      { name: 'DrKush', team: 'Side B', result: 'LOSS', kills: 12, deaths: 16, assists: 4, mvps: 1, hsPercent: 33, damage: 1235, utilityDamage: 55, enemyFlashed: 12 },
+      { name: 'Voldemort', team: 'Side B', result: 'LOSS', kills: 11, deaths: 14, assists: 4, mvps: 0, hsPercent: 40, damage: 1045, utilityDamage: 68, enemyFlashed: 0 },
+      { name: 'Aks', team: 'Side B', result: 'LOSS', kills: 8, deaths: 17, assists: 4, mvps: 0, hsPercent: 31, damage: 855, utilityDamage: 40, enemyFlashed: 4 }
     ]
   }
 ];
@@ -972,6 +972,37 @@ async function importJune24DataIfMissing() {
   localStorage.setItem('cs2_imported_june24_match_cards_v1', '1');
 }
 
+async function repairJune24Dust2IfNeeded() {
+  const match = await db.matches.where('[date+map]').equals([june24Date, 'Dust II']).first();
+  if (!match) return;
+
+  const rows = await db.match_players.where('matchId').equals(match.id!).toArray();
+  const rowByPlayer = new Map<number, MatchPlayer>();
+  for (const row of rows) {
+    rowByPlayer.set(row.playerId, row);
+  }
+
+  const updatesToApply: Array<{ rowId: number; patch: Partial<MatchPlayer> }> = [];
+  const players = await db.players.toArray();
+  const playerIdByName = new Map(players.map((p) => [p.name, p.id || 0]));
+  const thomasId = playerIdByName.get('thomas') || 0;
+  const drKushId = playerIdByName.get('DrKush') || 0;
+  const voldemortId = playerIdByName.get('Voldemort') || 0;
+  const aksId = playerIdByName.get('aks289') || playerIdByName.get('Aks') || 0;
+
+  const setPatch = (playerId: number, patch: Partial<MatchPlayer>) => {
+    const row = rowByPlayer.get(playerId);
+    if (row?.id) updatesToApply.push({ rowId: row.id, patch });
+  };
+
+  setPatch(thomasId, { hsPercent: 53, damage: 1235, utilityDamage: 0, enemyFlashed: 2, mvps: 0 });
+  setPatch(drKushId, { hsPercent: 33, damage: 1235, utilityDamage: 55, enemyFlashed: 12, mvps: 1 });
+  setPatch(voldemortId, { hsPercent: 40, damage: 1045, utilityDamage: 68, enemyFlashed: 0, mvps: 0 });
+  setPatch(aksId, { hsPercent: 31, damage: 855, utilityDamage: 40, enemyFlashed: 4, mvps: 0 });
+
+  await Promise.all(updatesToApply.map((item) => db.match_players.update(item.rowId, item.patch)));
+}
+
 async function mergeAmanAliasIfNeeded() {
   const aman = await db.players.where('name').equals('Aman').first();
   const aliasPlayer = await db.players
@@ -1192,5 +1223,6 @@ export async function seedIfEmpty() {
   await repairJune11MirageResultsIfNeeded();
   await importJune18DataIfMissing();
   await importJune24DataIfMissing();
+  await repairJune24Dust2IfNeeded();
   await mergeAmanAliasIfNeeded();
 }
