@@ -1,5 +1,31 @@
 import type { KnifeEvent, Match, MatchDay, MatchPlayer, Player } from './types';
-import { average, clamp, deriveAdr, normalizeResult, safeKD, safeNumber, safeRatio, weightedAverage } from './lib/scoring';
+import { average, deriveAdr, normalizeResult, safeKD, safeNumber, safeRatio, weightedAverage } from './lib/scoring';
+
+const SCORING = {
+  halfLifeDays: 21,
+  performanceWeights: {
+    adr: 0.38,
+    kills: 0.27,
+    survival: 0.13,
+    assists: 0.10,
+    utilityDamage: 0.05,
+    enemyFlashed: 0.04,
+    mvps: 0.03
+  },
+  baseScoreMean: 50,
+  resultBonus: {
+    WIN: 3,
+    DRAW: 1,
+    LOSS: 0
+  },
+  marginMultiplier: 0.15,
+  teamCarryDivisor: 15,
+  leaderboardWeights: {
+    form: 0.75,
+    seasonAvg: 0.25
+  },
+  scoringVersion: 'friends-league-v2-simple-uncapped'
+} as const;
 
 export type PlayerCategory = 'Regular' | 'Impact Player' | 'Cameo' | 'Inactive';
 
@@ -92,12 +118,14 @@ type MatchScoreBreakdown = {
   playerId: number;
   matchId: number;
   score: number;
+  computedScore: number;
   baseScore: number;
   performanceRatio: number;
   resultBonus: number;
   marginBonus: number;
   teamCarryBonus: number;
   adr: number;
+  adrForScoring: number;
   date: string;
   team: string;
 };
@@ -108,10 +136,10 @@ function getRowTeamSlot(match: Pick<Match, 'teamAName' | 'teamBName'>, row: Pick
   return 'A';
 }
 
-function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]): MatchScoreBreakdown[] {
+export function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]): MatchScoreBreakdown[] {
   const rounds = Math.max(1, safeNumber(match.teamAScore) + safeNumber(match.teamBScore));
   const rowStats = rows.map((row) => {
-    const adr = deriveAdr(safeNumber(row.damage), rounds);
+    const adrForScoring = deriveAdr(safeNumber(row.damage), rounds);
     const kpr = safeNumber(row.kills) / rounds;
     const dpr = safeNumber(row.deaths) / rounds;
     const apr = safeNumber(row.assists) / rounds;
@@ -120,7 +148,7 @@ function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]): MatchS
     const mvpr = safeNumber(row.mvps) / rounds;
     return {
       row,
-      adr,
+      adrForScoring,
       kpr,
       dpr,
       apr,
@@ -131,7 +159,7 @@ function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]): MatchS
   });
 
   const averages = {
-    adr: average(rowStats.map((item) => item.adr)),
+    adr: average(rowStats.map((item) => item.adrForScoring)),
     kpr: average(rowStats.map((item) => item.kpr)),
     dpr: average(rowStats.map((item) => item.dpr)),
     apr: average(rowStats.map((item) => item.apr)),
@@ -141,26 +169,26 @@ function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]): MatchS
   };
 
   const prelim = rowStats.map((item) => {
-    const adrRatio = clamp(safeRatio(item.adr, averages.adr), 0.5, 1.8);
-    const kprRatio = clamp(safeRatio(item.kpr, averages.kpr), 0.5, 1.8);
-    const survivalRatio = clamp(safeRatio(averages.dpr, item.dpr), 0.5, 1.8);
-    const assistRatio = clamp(safeRatio(item.apr, averages.apr), 0.5, 1.8);
-    const utilityRatio = clamp(safeRatio(item.udr, averages.udr), 0.5, 1.8);
-    const flashRatio = clamp(safeRatio(item.efr, averages.efr), 0.5, 1.8);
-    const mvpRatio = clamp(safeRatio(item.mvpr, averages.mvpr), 0.5, 1.8);
+    const adrRatio = safeRatio(item.adrForScoring, averages.adr);
+    const kprRatio = safeRatio(item.kpr, averages.kpr);
+    const survivalRatio = safeRatio(averages.dpr, item.dpr);
+    const assistRatio = safeRatio(item.apr, averages.apr);
+    const utilityRatio = safeRatio(item.udr, averages.udr);
+    const flashRatio = safeRatio(item.efr, averages.efr);
+    const mvpRatio = safeRatio(item.mvpr, averages.mvpr);
 
     const performanceRatio =
-      0.35 * adrRatio +
-      0.25 * kprRatio +
-      0.15 * survivalRatio +
-      0.10 * assistRatio +
-      0.06 * utilityRatio +
-      0.05 * flashRatio +
-      0.04 * mvpRatio;
+      SCORING.performanceWeights.adr * adrRatio +
+      SCORING.performanceWeights.kills * kprRatio +
+      SCORING.performanceWeights.survival * survivalRatio +
+      SCORING.performanceWeights.assists * assistRatio +
+      SCORING.performanceWeights.utilityDamage * utilityRatio +
+      SCORING.performanceWeights.enemyFlashed * flashRatio +
+      SCORING.performanceWeights.mvps * mvpRatio;
 
     return {
       ...item,
-      baseScore: 50 * performanceRatio,
+      baseScore: SCORING.baseScoreMean * performanceRatio,
       performanceRatio
     };
   });
@@ -177,22 +205,24 @@ function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]): MatchS
     const teamRoundsWon = teamSlot === 'B' ? safeNumber(match.teamBScore) : safeNumber(match.teamAScore);
     const enemyRoundsWon = teamSlot === 'B' ? safeNumber(match.teamAScore) : safeNumber(match.teamBScore);
     const result = normalizeResult(item.row.result);
-    const resultBonus = result === 'WIN' ? 5 : result === 'DRAW' ? 2 : 0;
+    const resultBonus = result === 'WIN' ? SCORING.resultBonus.WIN : result === 'DRAW' ? SCORING.resultBonus.DRAW : SCORING.resultBonus.LOSS;
     const margin = teamRoundsWon - enemyRoundsWon;
-    const marginBonus = clamp(margin * 0.35, -3, 3);
+    const marginBonus = margin * SCORING.marginMultiplier;
     const teamKey = item.row.team || 'Unknown';
-    const teamCarryBonus = clamp(((item.baseScore - (teamAverages.get(teamKey) || 0)) / 10), -3, 3);
-    const score = clamp(item.baseScore + resultBonus + marginBonus + teamCarryBonus, 1, 100);
+    const teamCarryBonus = (item.baseScore - (teamAverages.get(teamKey) || 0)) / SCORING.teamCarryDivisor;
+    const computedScore = item.baseScore + resultBonus + marginBonus + teamCarryBonus;
     scoreMap.set(item.row.playerId, {
       playerId: item.row.playerId,
       matchId: match.id || 0,
-      score,
+      score: computedScore,
+      computedScore,
       baseScore: item.baseScore,
       performanceRatio: item.performanceRatio,
       resultBonus,
       marginBonus,
       teamCarryBonus,
-      adr: item.adr,
+      adr: item.adrForScoring,
+      adrForScoring: item.adrForScoring,
       date: match.date,
       team: teamKey
     });
@@ -250,23 +280,6 @@ export function calculateMatchdayScores(
     rowsByMatchId.set(row.matchId, arr);
   }
 
-  const normalizedMatchScores = new Map<number, Map<number, number>>();
-  for (const [matchId, matchRows] of rowsByMatchId.entries()) {
-    const match = matchById.get(matchId);
-    if (!match) continue;
-    const details = calculateMatchScoresForMatch(match, matchRows);
-    const rawScores = details.map((detail) => detail.score);
-    const matchAverage = average(rawScores);
-    const perPlayer = new Map<number, number>();
-    for (let index = 0; index < matchRows.length; index += 1) {
-      const row = matchRows[index];
-      const raw = rawScores[index] ?? 0;
-      const centered = 50 + (raw - matchAverage) * 0.8;
-      perPlayer.set(row.playerId, Math.max(1, Math.min(100, centered)));
-    }
-    normalizedMatchScores.set(matchId, perPlayer);
-  }
-
   for (const player of players) {
     if (player.id) byPlayer.set(player.id, new Map());
   }
@@ -278,8 +291,7 @@ export function calculateMatchdayScores(
     if (!byPlayer.has(row.playerId)) byPlayer.set(row.playerId, new Map());
     const playerDays = byPlayer.get(row.playerId)!;
     const values = playerDays.get(matchDayId) || [];
-    const normalized = normalizedMatchScores.get(row.matchId)?.get(row.playerId);
-    values.push(normalized ?? calculateMatchValue(row, match, rowsByMatchId.get(row.matchId) || []));
+    values.push(calculateMatchValue(row, match, rowsByMatchId.get(row.matchId) || []));
     playerDays.set(matchDayId, values);
   }
 
@@ -326,7 +338,7 @@ export function calculateFormScore(matchScores: Array<{ score: number; date: str
   return weightedAverage(matchScores.map((entry) => {
     const scoreDate = new Date(`${entry.date}T00:00:00`).getTime();
     const daysAgo = Number.isFinite(scoreDate) ? Math.max(0, (now - scoreDate) / (1000 * 60 * 60 * 24)) : 0;
-    const weight = 0.5 ** (daysAgo / 21);
+    const weight = 0.5 ** (daysAgo / SCORING.halfLifeDays);
     return { value: entry.score, weight };
   }));
 }

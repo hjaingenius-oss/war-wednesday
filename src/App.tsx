@@ -7,6 +7,7 @@ import { calculatePoints, safeKD } from './lib/scoring';
 import {
   buildLeaderboardRows,
   buildFunAwards,
+  calculateMatchScoresForMatch,
   calculateMatchValue,
   calculateTotalPointsForMatch,
   generateMatchDisplayIds,
@@ -283,11 +284,12 @@ function PlayerProfile() {
         const match = matchById.get(row.matchId);
         if (!match) return null;
         const matchRows = rowsByMatch.get(row.matchId) || [];
+        const matchScore = calculateMatchScoresForMatch(match, matchRows).find((item) => item.playerId === row.playerId);
         return {
           matchId: row.matchId,
           match: getMatchDisplayId(row.matchId, matchDisplayIds),
           date: match.date,
-          score: fmt1(calculateMatchValue(row, match, matchRows))
+          score: fmt1(matchScore?.computedScore ?? calculateMatchValue(row, match, matchRows))
         };
       })
       .filter((value): value is { matchId: number; match: string; date: string; score: number } => Boolean(value))
