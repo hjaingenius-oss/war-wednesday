@@ -1,5 +1,5 @@
 import type { KnifeEvent, Match, MatchDay, MatchPlayer, Player } from './types';
-import { average, deriveAdr, normalizeResult, safeKD, safeNumber, safeRatio, weightedAverage } from './lib/scoring';
+import { average, deriveAdr, normalizeResult, normalizeWeights, safeKD, safeNumber, safeRatio, weightedAverage } from './lib/scoring';
 
 const SCORING = {
   halfLifeDays: 21,
@@ -24,7 +24,9 @@ const SCORING = {
     form: 0.75,
     seasonAvg: 0.25
   },
-  scoringVersion: 'friends-league-v2-simple-uncapped'
+  optionalMetricAvailabilityThreshold: 0.5,
+  fallbackAdrBaseline: 75,
+  scoringVersion: 'friends-league-v4-performance-index-missing-safe'
 } as const;
 
 export type PlayerCategory = 'Regular' | 'Impact Player' | 'Cameo' | 'Inactive';
@@ -126,9 +128,32 @@ type MatchScoreBreakdown = {
   teamCarryBonus: number;
   adr: number;
   adrForScoring: number;
+  kpr: number;
+  dpr: number;
+  apr: number;
   date: string;
   team: string;
+  damageDataQuality: 'actual' | 'estimated';
+  utilityDataQuality: 'actual' | 'missing_neutral' | 'missing_unavailable';
+  flashDataQuality: 'actual' | 'missing_neutral' | 'missing_unavailable';
+  mvpDataQuality: 'actual' | 'missing_neutral' | 'missing_unavailable';
 };
+
+function hasRealDamageValue(row: Pick<MatchPlayer, 'damage'>) {
+  return row.damage !== undefined && row.damage !== null && Number.isFinite(Number(row.damage)) && Number(row.damage) > 0;
+}
+
+function hasRealUtilityValue(row: Pick<MatchPlayer, 'utilityDamage'>) {
+  return row.utilityDamage !== undefined && row.utilityDamage !== null && Number.isFinite(Number(row.utilityDamage));
+}
+
+function hasRealFlashValue(row: Pick<MatchPlayer, 'enemyFlashed'>) {
+  return row.enemyFlashed !== undefined && row.enemyFlashed !== null && Number.isFinite(Number(row.enemyFlashed));
+}
+
+function hasRealMvpValue(row: Pick<MatchPlayer, 'mvps'>) {
+  return row.mvps !== undefined && row.mvps !== null && Number.isFinite(Number(row.mvps));
+}
 
 function getRowTeamSlot(match: Pick<Match, 'teamAName' | 'teamBName'>, row: Pick<MatchPlayer, 'team'>) {
   if (row.team && row.team === match.teamBName) return 'B';
@@ -138,58 +163,97 @@ function getRowTeamSlot(match: Pick<Match, 'teamAName' | 'teamBName'>, row: Pick
 
 export function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]): MatchScoreBreakdown[] {
   const rounds = Math.max(1, safeNumber(match.teamAScore) + safeNumber(match.teamBScore));
-  const rowStats = rows.map((row) => {
-    const adrForScoring = deriveAdr(safeNumber(row.damage), rounds);
-    const kpr = safeNumber(row.kills) / rounds;
-    const dpr = safeNumber(row.deaths) / rounds;
-    const apr = safeNumber(row.assists) / rounds;
-    const udr = safeNumber(row.utilityDamage) / rounds;
-    const efr = safeNumber(row.enemyFlashed) / rounds;
-    const mvpr = safeNumber(row.mvps) / rounds;
+  const coreStats = rows.map((row) => ({
+    row,
+    kpr: safeNumber(row.kills) / rounds,
+    dpr: safeNumber(row.deaths) / rounds,
+    apr: safeNumber(row.assists) / rounds
+  }));
+
+  const actualDamageRows = rows.filter((row) => hasRealDamageValue(row));
+  const actualDamageAdrs = actualDamageRows.map((row) => deriveAdr(safeNumber(row.damage), rounds));
+  const lobbyAvgAdrFromActualDamage = actualDamageAdrs.length ? average(actualDamageAdrs) : SCORING.fallbackAdrBaseline;
+
+  const avgKPR = average(coreStats.map((item) => item.kpr));
+  const avgDPR = average(coreStats.map((item) => item.dpr));
+  const avgAPR = average(coreStats.map((item) => item.apr));
+
+  const utilityAvailable = rows.filter((row) => hasRealUtilityValue(row)).length / Math.max(1, rows.length) >= SCORING.optionalMetricAvailabilityThreshold;
+  const flashAvailable = rows.filter((row) => hasRealFlashValue(row)).length / Math.max(1, rows.length) >= SCORING.optionalMetricAvailabilityThreshold;
+  const mvpAvailable = rows.filter((row) => hasRealMvpValue(row)).length / Math.max(1, rows.length) >= SCORING.optionalMetricAvailabilityThreshold;
+
+  const averages = {
+    adr: average(rows.map((row) => (
+      hasRealDamageValue(row)
+        ? deriveAdr(safeNumber(row.damage), rounds)
+        : lobbyAvgAdrFromActualDamage * (
+          0.7 * safeRatio(safeNumber(row.kills) / rounds, avgKPR) +
+          0.2 * safeRatio(avgDPR, safeNumber(row.deaths) / rounds) +
+          0.1 * safeRatio(safeNumber(row.assists) / rounds, avgAPR)
+        )
+    ))),
+    kpr: average(coreStats.map((item) => item.kpr)),
+    dpr: average(coreStats.map((item) => item.dpr)),
+    apr: average(coreStats.map((item) => item.apr)),
+    udr: utilityAvailable ? average(rows.filter((row) => hasRealUtilityValue(row)).map((row) => safeNumber(row.utilityDamage) / rounds)) : 0,
+    efr: flashAvailable ? average(rows.filter((row) => hasRealFlashValue(row)).map((row) => safeNumber(row.enemyFlashed) / rounds)) : 0,
+    mvpr: mvpAvailable ? average(rows.filter((row) => hasRealMvpValue(row)).map((row) => safeNumber(row.mvps) / rounds)) : 0
+  };
+
+  const prelim = coreStats.map((item) => {
+    const row = item.row;
+    const hasDamage = hasRealDamageValue(row);
+    const adrForScoring = hasDamage
+      ? deriveAdr(safeNumber(row.damage), rounds)
+      : lobbyAvgAdrFromActualDamage * (
+        0.7 * safeRatio(item.kpr, avgKPR) +
+        0.2 * safeRatio(avgDPR, item.dpr) +
+        0.1 * safeRatio(item.apr, avgAPR)
+      );
+    const damageDataQuality: MatchScoreBreakdown['damageDataQuality'] = hasDamage ? 'actual' : 'estimated';
+
+    const utilityReal = utilityAvailable && hasRealUtilityValue(row);
+    const flashReal = flashAvailable && hasRealFlashValue(row);
+    const mvpReal = mvpAvailable && hasRealMvpValue(row);
+    const utilityDataQuality: MatchScoreBreakdown['utilityDataQuality'] = utilityAvailable ? (utilityReal ? 'actual' : 'missing_neutral') : 'missing_unavailable';
+    const flashDataQuality: MatchScoreBreakdown['flashDataQuality'] = flashAvailable ? (flashReal ? 'actual' : 'missing_neutral') : 'missing_unavailable';
+    const mvpDataQuality: MatchScoreBreakdown['mvpDataQuality'] = mvpAvailable ? (mvpReal ? 'actual' : 'missing_neutral') : 'missing_unavailable';
+
+    const utilityRatio = utilityAvailable ? (utilityReal ? safeRatio(safeNumber(row.utilityDamage) / rounds, averages.udr) : 1) : undefined;
+    const flashRatio = flashAvailable ? (flashReal ? safeRatio(safeNumber(row.enemyFlashed) / rounds, averages.efr) : 1) : undefined;
+    const mvpRatio = mvpAvailable ? (mvpReal ? safeRatio(safeNumber(row.mvps) / rounds, averages.mvpr) : 1) : undefined;
+
+    const availableWeights = normalizeWeights(SCORING.performanceWeights, [
+      'adr',
+      'kills',
+      'survival',
+      'assists',
+      ...(utilityAvailable ? ['utilityDamage'] : []),
+      ...(flashAvailable ? ['enemyFlashed'] : []),
+      ...(mvpAvailable ? ['mvps'] : [])
+    ]);
+
+    const performanceRatio =
+      (availableWeights.adr || 0) * safeRatio(adrForScoring, averages.adr) +
+      (availableWeights.kills || 0) * safeRatio(item.kpr, averages.kpr) +
+      (availableWeights.survival || 0) * safeRatio(averages.dpr, item.dpr) +
+      (availableWeights.assists || 0) * safeRatio(item.apr, averages.apr) +
+      (availableWeights.utilityDamage || 0) * (utilityRatio ?? 0) +
+      (availableWeights.enemyFlashed || 0) * (flashRatio ?? 0) +
+      (availableWeights.mvps || 0) * (mvpRatio ?? 0);
+
     return {
       row,
       adrForScoring,
-      kpr,
-      dpr,
-      apr,
-      udr,
-      efr,
-      mvpr
-    };
-  });
-
-  const averages = {
-    adr: average(rowStats.map((item) => item.adrForScoring)),
-    kpr: average(rowStats.map((item) => item.kpr)),
-    dpr: average(rowStats.map((item) => item.dpr)),
-    apr: average(rowStats.map((item) => item.apr)),
-    udr: average(rowStats.map((item) => item.udr)),
-    efr: average(rowStats.map((item) => item.efr)),
-    mvpr: average(rowStats.map((item) => item.mvpr))
-  };
-
-  const prelim = rowStats.map((item) => {
-    const adrRatio = safeRatio(item.adrForScoring, averages.adr);
-    const kprRatio = safeRatio(item.kpr, averages.kpr);
-    const survivalRatio = safeRatio(averages.dpr, item.dpr);
-    const assistRatio = safeRatio(item.apr, averages.apr);
-    const utilityRatio = safeRatio(item.udr, averages.udr);
-    const flashRatio = safeRatio(item.efr, averages.efr);
-    const mvpRatio = safeRatio(item.mvpr, averages.mvpr);
-
-    const performanceRatio =
-      SCORING.performanceWeights.adr * adrRatio +
-      SCORING.performanceWeights.kills * kprRatio +
-      SCORING.performanceWeights.survival * survivalRatio +
-      SCORING.performanceWeights.assists * assistRatio +
-      SCORING.performanceWeights.utilityDamage * utilityRatio +
-      SCORING.performanceWeights.enemyFlashed * flashRatio +
-      SCORING.performanceWeights.mvps * mvpRatio;
-
-    return {
-      ...item,
-      baseScore: SCORING.baseScoreMean * performanceRatio,
-      performanceRatio
+      kpr: item.kpr,
+      dpr: item.dpr,
+      apr: item.apr,
+      damageDataQuality,
+      utilityDataQuality,
+      flashDataQuality,
+      mvpDataQuality,
+      performanceRatio,
+      baseScore: SCORING.baseScoreMean * performanceRatio
     };
   });
 
@@ -223,8 +287,15 @@ export function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]):
       teamCarryBonus,
       adr: item.adrForScoring,
       adrForScoring: item.adrForScoring,
+      kpr: item.kpr,
+      dpr: item.dpr,
+      apr: item.apr,
       date: match.date,
-      team: teamKey
+      team: teamKey,
+      damageDataQuality: item.damageDataQuality,
+      utilityDataQuality: item.utilityDataQuality,
+      flashDataQuality: item.flashDataQuality,
+      mvpDataQuality: item.mvpDataQuality
     });
   }
 
@@ -334,13 +405,12 @@ export function calculateWeightedAverageMatchdayScore(
 
 export function calculateFormScore(matchScores: Array<{ score: number; date: string }>) {
   if (!matchScores.length) return 0;
-  const now = Date.now();
-  return weightedAverage(matchScores.map((entry) => {
-    const scoreDate = new Date(`${entry.date}T00:00:00`).getTime();
-    const daysAgo = Number.isFinite(scoreDate) ? Math.max(0, (now - scoreDate) / (1000 * 60 * 60 * 24)) : 0;
-    const weight = 0.5 ** (daysAgo / SCORING.halfLifeDays);
-    return { value: entry.score, weight };
-  }));
+  const latest = [...matchScores].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
+  const weights = [0.6, 0.3, 0.1];
+  return weightedAverage(latest.map((entry, index) => ({
+    value: entry.score,
+    weight: weights[index] || 0
+  })));
 }
 
 export function calculateSeasonAvg(matchScores: Array<{ score: number }>) {
@@ -363,7 +433,10 @@ export function calculateWarRating(weightedAverageMatchdayScore: number, attenda
 }
 
 export function calculateFormRating(scores: PlayerLeaderboardRow['matchdayScores']) {
-  return average(scores.slice(0, 3).map((s) => s.score));
+  return weightedAverage(scores.slice(0, 3).map((s, index) => ({
+    value: s.score,
+    weight: [0.6, 0.3, 0.1][index] || 0
+  })));
 }
 
 export function classifyPlayer(
@@ -876,8 +949,8 @@ function buildPlayerRow(
   const matchScoreAvg = calculateSeasonAvg(windowMatchScores);
   const computedScoreTotal = sum(windowMatchScores.map((entry) => entry.score));
   const seasonAvg = calculateSeasonAvg(allMatchScores);
-  const formScore = calculateFormScore(allMatchScores);
-  const rankScore = 0.75 * formScore + 0.25 * seasonAvg;
+  const formScore = calculateFormRating(matchdayScores);
+  const rankScore = 0.65 * formScore + 0.35 * seasonAvg;
   const knifeKills = player.id ? knifeEvents.filter((e) => e.attackerPlayerId === player.id).length : 0;
   const knifeDeaths = player.id ? knifeEvents.filter((e) => e.victimPlayerId === player.id).length : 0;
 

@@ -41,6 +41,15 @@ export function safeRatio(value: number, averageValue: number) {
   return safeValue / safeAverage;
 }
 
+export function normalizeWeights(weights: Record<string, number>, availableKeys: string[]) {
+  const total = availableKeys.reduce((sum, key) => sum + (weights[key] || 0), 0);
+  if (total <= 0) return weights;
+
+  return Object.fromEntries(
+    availableKeys.map((key) => [key, (weights[key] || 0) / total])
+  );
+}
+
 export function deriveAdr(damage: number, rounds: number) {
   const safeDamage = safeNumber(damage);
   const safeRounds = Math.max(1, safeNumber(rounds));
