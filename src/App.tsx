@@ -259,7 +259,6 @@ function PlayerProfile() {
   const matchDisplayIds = useMemo(() => generateMatchDisplayIds(matches), [matches]);
   const pid = Number(id);
   const p = players.find((x)=>x.id===pid);
-  if (!p) return <div className="card">Player not found.</div>;
   const board = buildLeaderboardRows(players, matchDays, matches, rows, knifeEvents, 'all');
   const fun = buildFunAwards(players, rows, matches, board.allRows, 'all');
   const profile = board.allRows.find((r)=>r.playerId===pid);
@@ -301,6 +300,7 @@ function PlayerProfile() {
   const utilityDamage = pr.reduce((s,r)=>s+Number((r as MatchPlayer).utilityDamage || 0),0);
   const enemyFlashed = pr.reduce((s,r)=>s+Number((r as MatchPlayer).enemyFlashed || 0),0);
   const profileBadges = buildProfileFunBadges(pid, fun).slice(0, 3);
+  if (!p) return <div className="card">Player not found.</div>;
   return <div className="card"><h2>{p.name}</h2>{profile && profile.category !== 'Regular' && profile.wouldRank && <p className="warn">Not officially ranked due to attendance, but would rank #{profile.wouldRank} among Regulars by Score.</p>}<section className="stats-grid"><div className="stat card"><h3>Category</h3><p>{profile?.category || 'Inactive'}</p></div><div className="stat card"><h3>Score</h3><p>{fmt1(profile?.warRating || 0)}</p></div><div className="stat card"><h3>Form</h3><p>{fmt1(profile?.formRating || 0)}</p></div><div className="stat card"><h3>Total Points</h3><p>{fmt(profile?.totalPoints || points)}</p></div><div className="stat card"><h3>Attendance</h3><p>{pct(profile?.attendanceRate || 0)}</p></div><div className="stat card"><h3>Matchdays</h3><p>{profile?.matchdaysPlayed || 0}</p></div><div className="stat card"><h3>Matches</h3><p>{pr.length}</p></div><div className="stat card"><h3>Wins/Losses</h3><p>{wins}/{losses}</p></div><div className="stat card"><h3>Win %</h3><p>{pr.length?fmt1((wins/pr.length)*100):0}%</p></div><div className="stat card"><h3>K/D</h3><p>{safeKD(kills,deaths)}</p></div><div className="stat card"><h3>Knifed</h3><p>{knifeKills}</p></div><div className="stat card"><h3>Got Knifed</h3><p>{knifeDeaths}</p></div></section>
   <section className="stats-grid"><div className="stat card"><h3>Utility Damage</h3><p>{Math.round(utilityDamage)}</p></div><div className="stat card"><h3>Utility DMG / Game</h3><p>{profile ? fmt1(profile.utilityDamagePerGame) : 0}</p></div><div className="stat card"><h3>Enemies Flashed</h3><p>{Math.round(enemyFlashed)}</p></div><div className="stat card"><h3>Flashes / Game</h3><p>{profile ? fmt1(profile.enemyFlashedPerGame) : 0}</p></div></section>
   {profileBadges.length > 0 && <><h3>Player Titles</h3><div className="badge-row">{profileBadges.map((b) => <span className="fun-badge" key={b}>{b}</span>)}</div></>}

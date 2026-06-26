@@ -850,6 +850,10 @@ function buildPlayerRow(
   const headshotKills = sum(playerRows.map((r) => safeNumber(r.kills) * (safeNumber((r as MatchPlayer).hsPercent) / 100)));
   const utilityDamage = sum(playerRows.map((r) => safeNumber((r as MatchPlayer).utilityDamage)));
   const enemyFlashed = sum(playerRows.map((r) => safeNumber((r as MatchPlayer).enemyFlashed)));
+  const damageGames = playerRows.filter((r) => r.damage !== undefined && r.damage !== null).length;
+  const hsGames = playerRows.filter((r) => r.hsPercent !== undefined && r.hsPercent !== null).length;
+  const utilityDamageGames = playerRows.filter((r) => (r as MatchPlayer).utilityDamage !== undefined && (r as MatchPlayer).utilityDamage !== null).length;
+  const enemyFlashedGames = playerRows.filter((r) => (r as MatchPlayer).enemyFlashed !== undefined && (r as MatchPlayer).enemyFlashed !== null).length;
   const totalPoints = sum(playerRows.map(calculateTotalPointsForMatch));
   const wins = playerRows.filter((r) => r.result === 'WIN').length;
   const losses = playerRows.filter((r) => r.result === 'LOSS').length;
@@ -893,10 +897,10 @@ function buildPlayerRow(
     headshotKills,
     utilityDamage,
     enemyFlashed,
-    damagePerGame: matchesPlayed ? damage / matchesPlayed : 0,
-    headshotKillsPerGame: matchesPlayed ? headshotKills / matchesPlayed : 0,
-    utilityDamagePerGame: matchesPlayed ? utilityDamage / matchesPlayed : 0,
-    enemyFlashedPerGame: matchesPlayed ? enemyFlashed / matchesPlayed : 0,
+    damagePerGame: damageGames ? damage / damageGames : 0,
+    headshotKillsPerGame: hsGames ? headshotKills / hsGames : 0,
+    utilityDamagePerGame: utilityDamageGames ? utilityDamage / utilityDamageGames : 0,
+    enemyFlashedPerGame: enemyFlashedGames ? enemyFlashed / enemyFlashedGames : 0,
     knifeKills,
     knifeDeaths,
     games10PlusKills: playerRows.filter((r) => safeNumber(r.kills) >= 10).length,
