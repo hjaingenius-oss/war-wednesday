@@ -55,16 +55,16 @@ const points = (r: MatchResult, k: number, a: number, d: number) => rp(r) + k + 
 
 type RawPlayerRow = {
   name: string;
-  team: 'Side A' | 'Side B' | 'CT' | 'T';
+  team: string;
   result: MatchResult;
   kills: number;
   deaths: number;
   assists: number;
-  hsPercent: number;
-  damage: number;
-  utilityDamage?: number;
-  enemyFlashed?: number;
-  mvps?: number;
+  hsPercent?: number | null;
+  damage?: number | null;
+  utilityDamage?: number | null;
+  enemyFlashed?: number | null;
+  mvps?: number | null;
 };
 
 type RawMatch = {
@@ -84,6 +84,7 @@ type ImportedKnife = {
   map: string;
   attacker: string;
   victim: string;
+  matchIndex?: number;
 };
 
 const importedMatches: RawMatch[] = [
@@ -461,6 +462,131 @@ const june18Matches: RawMatch[] = [
   },
 ];
 
+const june24MatchDayTitle = 'War Wednesday - June 24, 2026';
+const june24Date = '2026-06-24';
+const june24Matches: RawMatch[] = [
+  {
+    date: june24Date,
+    matchDayTitle: june24MatchDayTitle,
+    map: 'Inferno',
+    teamAScore: 10,
+    teamBScore: 13,
+    winningTeam: 'Side B',
+    rows: [
+      { name: 'Manson', team: 'Side A', result: 'LOSS', kills: 22, deaths: 17, assists: 3, mvps: 2, hsPercent: 31, damage: 96, utilityDamage: 0, enemyFlashed: 1 },
+      { name: 'IB', team: 'Side A', result: 'LOSS', kills: 17, deaths: 21, assists: 8, mvps: 1, hsPercent: 5, damage: 82, utilityDamage: 51, enemyFlashed: 0 },
+      { name: '!!@DaNgErBoY@!!', team: 'Side A', result: 'LOSS', kills: 20, deaths: 15, assists: 3, mvps: 2, hsPercent: 25, damage: 85, utilityDamage: 50, enemyFlashed: 4 },
+      { name: 'Bob Marde', team: 'Side A', result: 'LOSS', kills: 11, deaths: 18, assists: 4, mvps: 1, hsPercent: 54, damage: 53, utilityDamage: 66, enemyFlashed: 6 },
+      { name: 'Mere Baap', team: 'Side A', result: 'LOSS', kills: 12, deaths: 20, assists: 3, mvps: 0, hsPercent: 33, damage: 65, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Daa', team: 'Side A', result: 'LOSS', kills: 10, deaths: 20, assists: 5, mvps: 2, hsPercent: 30, damage: 62, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Mr. DJANGO', team: 'Side A', result: 'LOSS', kills: 12, deaths: 4, assists: 2, mvps: 2, hsPercent: 41, damage: 54, utilityDamage: 4, enemyFlashed: 0 },
+      { name: 'VPS', team: 'Side B', result: 'WIN', kills: 24, deaths: 15, assists: 6, mvps: 2, hsPercent: 29, damage: 105, utilityDamage: 220, enemyFlashed: 0 },
+      { name: 'amansanghvi1', team: 'Side B', result: 'WIN', kills: 19, deaths: 16, assists: 8, mvps: 2, hsPercent: 31, damage: 81, utilityDamage: 0, enemyFlashed: 5 },
+      { name: 'Aks', team: 'Side B', result: 'WIN', kills: 20, deaths: 21, assists: 6, mvps: 2, hsPercent: 60, damage: 98, utilityDamage: 0, enemyFlashed: 7 },
+      { name: 'DrKush', team: 'Side B', result: 'WIN', kills: 20, deaths: 11, assists: 7, mvps: 2, hsPercent: 35, damage: 79, utilityDamage: 42, enemyFlashed: 10 },
+      { name: 'Radha', team: 'Side B', result: 'WIN', kills: 19, deaths: 18, assists: 3, mvps: 2, hsPercent: 0, damage: 86, utilityDamage: 0, enemyFlashed: 8 },
+      { name: 'Voldemort', team: 'Side B', result: 'WIN', kills: 10, deaths: 18, assists: 3, mvps: 0, hsPercent: 50, damage: 48, utilityDamage: 277, enemyFlashed: 0 },
+      { name: 'thomas', team: 'Side B', result: 'WIN', kills: 2, deaths: 6, assists: 4, mvps: 0, hsPercent: 100, damage: 20, utilityDamage: 0, enemyFlashed: 0 }
+    ]
+  },
+  {
+    date: june24Date,
+    matchDayTitle: june24MatchDayTitle,
+    map: 'Dust II',
+    teamAScore: 13,
+    teamBScore: 10,
+    winningTeam: 'Side A',
+    rows: [
+      { name: 'thomas', team: 'Side A', result: 'WIN', kills: 26, deaths: 15, assists: 4, mvps: 1, hsPercent: 53, damage: 102, utilityDamage: 0, enemyFlashed: 2 },
+      { name: 'Radha', team: 'Side A', result: 'WIN', kills: 22, deaths: 17, assists: 4, mvps: 1, hsPercent: 40, damage: 103, utilityDamage: 60, enemyFlashed: 6 },
+      { name: 'amansanghvi1', team: 'Side A', result: 'WIN', kills: 20, deaths: 15, assists: 8, mvps: 0, hsPercent: 45, damage: 82, utilityDamage: 11, enemyFlashed: 4 },
+      { name: 'Aks', team: 'Side A', result: 'WIN', kills: 16, deaths: 14, assists: 5, mvps: 2, hsPercent: 31, damage: 76, utilityDamage: 147, enemyFlashed: 18 },
+      { name: 'DrKush', team: 'Side A', result: 'WIN', kills: 12, deaths: 15, assists: 9, mvps: 0, hsPercent: 33, damage: 75, utilityDamage: 55, enemyFlashed: 12 },
+      { name: 'VPS', team: 'Side A', result: 'WIN', kills: 16, deaths: 14, assists: 8, mvps: 0, hsPercent: 18, damage: 71, utilityDamage: 0, enemyFlashed: 18 },
+      { name: 'Voldemort', team: 'Side A', result: 'WIN', kills: 15, deaths: 18, assists: 9, mvps: 1, hsPercent: 40, damage: 80, utilityDamage: 301, enemyFlashed: 2 },
+      { name: 'Mr. DJANGO', team: 'Side B', result: 'LOSS', kills: 25, deaths: 18, assists: 3, mvps: 0, hsPercent: 32, damage: 100, utilityDamage: 24, enemyFlashed: 14 },
+      { name: 'IB', team: 'Side B', result: 'LOSS', kills: 24, deaths: 20, assists: 2, mvps: 0, hsPercent: 33, damage: 112, utilityDamage: 44, enemyFlashed: 0 },
+      { name: 'Manson', team: 'Side B', result: 'LOSS', kills: 17, deaths: 19, assists: 8, mvps: 0, hsPercent: 41, damage: 100, utilityDamage: 0, enemyFlashed: 2 },
+      { name: 'Mere Baap', team: 'Side B', result: 'LOSS', kills: 13, deaths: 21, assists: 5, mvps: 0, hsPercent: 23, damage: 57, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Daa', team: 'Side B', result: 'LOSS', kills: 10, deaths: 19, assists: 6, mvps: 0, hsPercent: 20, damage: 47, utilityDamage: 0, enemyFlashed: 0 },
+      { name: '!!@DaNgErBoY@!!', team: 'Side B', result: 'LOSS', kills: 11, deaths: 16, assists: 6, mvps: 1, hsPercent: 45, damage: 69, utilityDamage: 62, enemyFlashed: 7 },
+      { name: 'Bob Marde', team: 'Side B', result: 'LOSS', kills: 8, deaths: 18, assists: 6, mvps: 1, hsPercent: 62, damage: 53, utilityDamage: 122, enemyFlashed: 15 }
+    ]
+  },
+  {
+    date: june24Date,
+    matchDayTitle: june24MatchDayTitle,
+    map: 'Ancient',
+    teamAScore: 6,
+    teamBScore: 13,
+    winningTeam: 'Side B',
+    rows: [
+      { name: 'Mr. DJANGO', team: 'Side A', result: 'LOSS', kills: 26, deaths: 15, assists: 8, mvps: 2, hsPercent: 34, damage: 137, utilityDamage: 117, enemyFlashed: 6 },
+      { name: 'Manson', team: 'Side A', result: 'LOSS', kills: 15, deaths: 15, assists: 7, mvps: 2, hsPercent: 20, damage: 98, utilityDamage: 0, enemyFlashed: 2 },
+      { name: '!!@DaNgErBoY@!!', team: 'Side A', result: 'LOSS', kills: 18, deaths: 16, assists: 1, mvps: 1, hsPercent: 44, damage: 82, utilityDamage: 41, enemyFlashed: 4 },
+      { name: 'IB', team: 'Side A', result: 'LOSS', kills: 15, deaths: 17, assists: 1, mvps: 0, hsPercent: 6, damage: 83, utilityDamage: 60, enemyFlashed: 1 },
+      { name: 'Daa', team: 'Side A', result: 'LOSS', kills: 10, deaths: 17, assists: 2, mvps: 0, hsPercent: 30, damage: 58, utilityDamage: 0, enemyFlashed: 1 },
+      { name: 'Mere Baap', team: 'Side A', result: 'LOSS', kills: 9, deaths: 17, assists: 5, mvps: 0, hsPercent: 11, damage: 64, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Bob Marde', team: 'Side A', result: 'LOSS', kills: 5, deaths: 18, assists: 7, mvps: 0, hsPercent: 80, damage: 54, utilityDamage: 120, enemyFlashed: 16 },
+      { name: 'Radha', team: 'Side B', result: 'WIN', kills: 24, deaths: 16, assists: 8, mvps: 4, hsPercent: 33, damage: 149, utilityDamage: 48, enemyFlashed: 1 },
+      { name: 'amansanghvi1', team: 'Side B', result: 'WIN', kills: 22, deaths: 13, assists: 7, mvps: 1, hsPercent: 18, damage: 108, utilityDamage: 5, enemyFlashed: 7 },
+      { name: 'thomas', team: 'Side B', result: 'WIN', kills: 18, deaths: 13, assists: 4, mvps: 2, hsPercent: 38, damage: 85, utilityDamage: 12, enemyFlashed: 4 },
+      { name: 'VPS', team: 'Side B', result: 'WIN', kills: 19, deaths: 14, assists: 7, mvps: 3, hsPercent: 21, damage: 105, utilityDamage: 20, enemyFlashed: 0 },
+      { name: 'DrKush', team: 'Side B', result: 'WIN', kills: 17, deaths: 12, assists: 6, mvps: 2, hsPercent: 17, damage: 98, utilityDamage: 264, enemyFlashed: 4 },
+      { name: 'Aks', team: 'Side B', result: 'WIN', kills: 9, deaths: 13, assists: 8, mvps: 0, hsPercent: 22, damage: 60, utilityDamage: 143, enemyFlashed: 13 },
+      { name: 'Voldemort', team: 'Side B', result: 'WIN', kills: 5, deaths: 17, assists: 1, mvps: 1, hsPercent: 40, damage: 23, utilityDamage: 68, enemyFlashed: 0 }
+    ]
+  },
+  {
+    date: june24Date,
+    matchDayTitle: june24MatchDayTitle,
+    map: 'Mirage',
+    teamAScore: 8,
+    teamBScore: 13,
+    winningTeam: 'Side B',
+    rows: [
+      { name: 'VPS', team: 'Side A', result: 'LOSS', kills: 22, deaths: 20, assists: 10, mvps: 0, hsPercent: 33, damage: 74, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'amansanghvi1', team: 'Side A', result: 'LOSS', kills: 18, deaths: 24, assists: 6, mvps: 0, hsPercent: 28, damage: 86, utilityDamage: 18, enemyFlashed: 9 },
+      { name: 'Radha', team: 'Side A', result: 'LOSS', kills: 18, deaths: 18, assists: 8, mvps: 0, hsPercent: 16, damage: 81, utilityDamage: 0, enemyFlashed: 9 },
+      { name: 'Aks', team: 'Side A', result: 'LOSS', kills: 16, deaths: 20, assists: 6, mvps: 0, hsPercent: 31, damage: 80, utilityDamage: 40, enemyFlashed: 12 },
+      { name: 'DrKush', team: 'Side A', result: 'LOSS', kills: 13, deaths: 18, assists: 6, mvps: 0, hsPercent: 23, damage: 70, utilityDamage: 41, enemyFlashed: 2 },
+      { name: 'Voldemort', team: 'Side A', result: 'LOSS', kills: 11, deaths: 18, assists: 3, mvps: 0, hsPercent: 27, damage: 81, utilityDamage: 24, enemyFlashed: 0 },
+      { name: 'thomas', team: 'Side A', result: 'LOSS', kills: 8, deaths: 17, assists: 4, mvps: 0, hsPercent: 56, damage: 49, utilityDamage: 0, enemyFlashed: 1 },
+      { name: 'Manson', team: 'Side B', result: 'WIN', kills: 29, deaths: 12, assists: 4, mvps: 0, hsPercent: 24, damage: 131, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'IB', team: 'Side B', result: 'WIN', kills: 20, deaths: 18, assists: 3, mvps: 0, hsPercent: 31, damage: 82, utilityDamage: 1, enemyFlashed: 0 },
+      { name: 'Daa', team: 'Side B', result: 'WIN', kills: 23, deaths: 18, assists: 1, mvps: 0, hsPercent: 11, damage: 87, utilityDamage: 0, enemyFlashed: 9 },
+      { name: 'Mere Baap', team: 'Side B', result: 'WIN', kills: 16, deaths: 19, assists: 1, mvps: 0, hsPercent: 38, damage: 60, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Bob Marde', team: 'Side B', result: 'WIN', kills: 11, deaths: 21, assists: 1, mvps: 0, hsPercent: 88, damage: 86, utilityDamage: 178, enemyFlashed: 6 }
+    ]
+  },
+  {
+    date: june24Date,
+    matchDayTitle: june24MatchDayTitle,
+    map: 'Dust II',
+    teamAScore: 13,
+    teamBScore: 6,
+    winningTeam: 'Side A',
+    rows: [
+      { name: 'IB', team: 'Side A', result: 'WIN', kills: 22, deaths: 14, assists: 4, mvps: 2 },
+      { name: '!!@DaNgErBoY@!!', team: 'Side A', result: 'WIN', kills: 19, deaths: 12, assists: 2, mvps: 0 },
+      { name: 'Daa', team: 'Side A', result: 'WIN', kills: 10, deaths: 13, assists: 5, mvps: 2 },
+      { name: 'Bob Marde', team: 'Side A', result: 'WIN', kills: 10, deaths: 13, assists: 5, mvps: 2 },
+      { name: 'Manson', team: 'Side A', result: 'WIN', kills: 9, deaths: 16, assists: 7, mvps: 0 },
+      { name: 'Mere Baap', team: 'Side A', result: 'WIN', kills: 10, deaths: 16, assists: 5, mvps: 1 },
+      { name: 'VPS', team: 'Side B', result: 'LOSS', kills: 20, deaths: 13, assists: 1, mvps: 2 },
+      { name: 'thomas', team: 'Side B', result: 'LOSS', kills: 14, deaths: 18, assists: 1, mvps: 0 },
+      { name: 'DrKush', team: 'Side B', result: 'LOSS', kills: 12, deaths: 16, assists: 4, mvps: 1 },
+      { name: 'Voldemort', team: 'Side B', result: 'LOSS', kills: 11, deaths: 14, assists: 4, mvps: 0 },
+      { name: 'Aks', team: 'Side B', result: 'LOSS', kills: 8, deaths: 17, assists: 4, mvps: 0 }
+    ]
+  }
+];
+
+const june24KnifeSeed: ImportedKnife[] = [
+  { date: june24Date, map: 'Dust II', attacker: 'VPS', victim: 'Manson', matchIndex: 1 },
+  { date: june24Date, map: 'Ancient', attacker: 'Django', victim: 'Voldemort', matchIndex: 2 }
+];
+
 function norm(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -543,8 +669,8 @@ async function importJune3DataIfMissing() {
         kills: row.kills,
         deaths: row.deaths,
         assists: row.assists,
-        damage: row.damage,
-        hsPercent: row.hsPercent,
+        damage: row.damage ?? undefined,
+        hsPercent: row.hsPercent ?? undefined,
         mvps: 0,
         points: points(row.result, row.kills, row.assists, row.deaths)
       });
@@ -628,8 +754,8 @@ async function importJune11DataIfMissing() {
         kills: row.kills,
         deaths: row.deaths,
         assists: row.assists,
-        damage: row.damage,
-        hsPercent: row.hsPercent,
+        damage: row.damage ?? undefined,
+        hsPercent: row.hsPercent ?? undefined,
         mvps: 0,
         points: points(row.result, row.kills, row.assists, row.deaths)
       });
@@ -713,10 +839,10 @@ async function importJune18DataIfMissing() {
         kills: row.kills,
         deaths: row.deaths,
         assists: row.assists,
-        damage: row.damage,
-        hsPercent: row.hsPercent,
-        utilityDamage: row.utilityDamage,
-        enemyFlashed: row.enemyFlashed,
+        damage: row.damage ?? undefined,
+        hsPercent: row.hsPercent ?? undefined,
+        utilityDamage: row.utilityDamage ?? undefined,
+        enemyFlashed: row.enemyFlashed ?? undefined,
         mvps: row.mvps ?? 0,
         points: points(row.result, row.kills, row.assists, row.deaths)
       });
@@ -746,6 +872,104 @@ async function importJune18DataIfMissing() {
   }
 
   localStorage.setItem('cs2_imported_june18_match_cards_v1', '1');
+}
+
+async function importJune24DataIfMissing() {
+  const flag = localStorage.getItem('cs2_imported_june24_match_cards_v1');
+  const hasJune24 = await db.matches.where('date').equals(june24Date).count();
+  if (flag === '1' || hasJune24 > 0) {
+    localStorage.setItem('cs2_imported_june24_match_cards_v1', '1');
+    return;
+  }
+
+  const season = await db.seasons.filter((s) => s.isCurrent).first() || await db.seasons.orderBy('id').last();
+  let seasonId = season?.id;
+  if (!seasonId) {
+    seasonId = Number(await db.seasons.add({ name: 'Season 1', isCurrent: true, archived: false, createdAt: now() }));
+  }
+
+  const matchDayId = Number(await db.match_days.add({
+    seasonId: Number(seasonId),
+    title: june24MatchDayTitle,
+    eventDate: june24Date,
+    notes: 'Imported from June 24 screenshots',
+    createdAt: now()
+  }));
+
+  const allNames = Array.from(new Set(june24Matches.flatMap((m) => m.rows.map((r) => r.name))));
+  for (const name of allNames) {
+    const canonicalName = canonicalImportName(name);
+    const playerId = await getOrCreatePlayerId(canonicalName);
+    if (canonicalName !== name) {
+      await addAliasIfMissing(playerId, name);
+    }
+  }
+
+  const matchIdsInOrder: number[] = [];
+  for (const match of june24Matches) {
+    const matchId = Number(await db.matches.add({
+      seasonId: Number(seasonId),
+      matchDayId,
+      date: match.date,
+      map: match.map,
+      teamAName: 'Side A',
+      teamBName: 'Side B',
+      teamAScore: match.teamAScore,
+      teamBScore: match.teamBScore,
+      winningTeam: match.winningTeam,
+      notes: 'Imported from June 24 screenshots',
+      createdAt: now()
+    }));
+    matchIdsInOrder.push(matchId);
+
+    const rows = [];
+    for (const row of match.rows) {
+      const canonicalName = canonicalImportName(row.name);
+      const playerId = await getOrCreatePlayerId(canonicalName);
+      if (canonicalName !== row.name) {
+        await addAliasIfMissing(playerId, row.name);
+      }
+      rows.push({
+        matchId,
+        playerId,
+        team: row.team,
+        result: row.result,
+        kills: row.kills,
+        deaths: row.deaths,
+        assists: row.assists,
+        damage: row.damage ?? undefined,
+        hsPercent: row.hsPercent ?? undefined,
+        utilityDamage: row.utilityDamage ?? undefined,
+        enemyFlashed: row.enemyFlashed ?? undefined,
+        mvps: row.mvps ?? 0,
+        points: points(row.result, row.kills, row.assists, row.deaths)
+      });
+    }
+    await db.match_players.bulkAdd(rows);
+  }
+
+  for (const ev of june24KnifeSeed) {
+    const matchId = ev.matchIndex !== undefined ? matchIdsInOrder[ev.matchIndex] : undefined;
+    if (!matchId) continue;
+    const attackerName = ev.attacker === 'Django' ? 'Mr. DJANGO' : canonicalImportName(ev.attacker);
+    const victimName = canonicalImportName(ev.victim);
+    const attackerId = await getOrCreatePlayerId(attackerName);
+    const victimId = await getOrCreatePlayerId(victimName);
+    const existing = await db.knife_events
+      .where('[attackerPlayerId+victimPlayerId]')
+      .equals([attackerId, victimId])
+      .count();
+    if (!existing) {
+      await db.knife_events.add({
+        matchId,
+        attackerPlayerId: attackerId,
+        victimPlayerId: victimId,
+        createdAt: now()
+      });
+    }
+  }
+
+  localStorage.setItem('cs2_imported_june24_match_cards_v1', '1');
 }
 
 async function mergeAmanAliasIfNeeded() {
@@ -926,8 +1150,8 @@ async function replaceWithImportedData() {
         kills: r.kills,
         deaths: r.deaths,
         assists: r.assists,
-        damage: r.damage,
-        hsPercent: r.hsPercent,
+        damage: r.damage ?? undefined,
+        hsPercent: r.hsPercent ?? undefined,
         mvps: 0,
         points: points(r.result, r.kills, r.assists, r.deaths)
       })));
@@ -967,5 +1191,6 @@ export async function seedIfEmpty() {
   await repairJune11UtilityStatsIfNeeded();
   await repairJune11MirageResultsIfNeeded();
   await importJune18DataIfMissing();
+  await importJune24DataIfMissing();
   await mergeAmanAliasIfNeeded();
 }
