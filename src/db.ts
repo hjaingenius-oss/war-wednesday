@@ -587,6 +587,74 @@ const june24KnifeSeed: ImportedKnife[] = [
   { date: june24Date, map: 'Ancient', attacker: 'Django', victim: 'Voldemort', matchIndex: 2 }
 ];
 
+const july7Date = '2026-07-07';
+const july7MatchDayTitle = 'War Wednesday - July 7, 2026';
+const july7Matches: RawMatch[] = [
+  {
+    date: july7Date,
+    matchDayTitle: july7MatchDayTitle,
+    map: 'Mirage',
+    teamAScore: 10,
+    teamBScore: 13,
+    winningTeam: 'Side B',
+    rows: [
+      { name: 'Mr. DJANGO', team: 'Side A', result: 'LOSS', kills: 18, deaths: 19, assists: 7, hsPercent: 38, damage: 2258 },
+      { name: 'GULLU', team: 'Side A', result: 'LOSS', kills: 20, deaths: 17, assists: 2, hsPercent: 20, damage: 2140 },
+      { name: 'gillranversingh38', team: 'Side A', result: 'LOSS', kills: 18, deaths: 20, assists: 4, hsPercent: 27, damage: 1938 },
+      { name: 'Radha', team: 'Side A', result: 'LOSS', kills: 18, deaths: 20, assists: 5, hsPercent: 33, damage: 1678 },
+      { name: 'Bob Marde', team: 'Side A', result: 'LOSS', kills: 16, deaths: 20, assists: 3, hsPercent: 37, damage: 1491 },
+      { name: 'Mere Baap', team: 'Side A', result: 'LOSS', kills: 5, deaths: 21, assists: 4, hsPercent: 40, damage: 842 },
+      { name: 'fatal_destiny', team: 'Side B', result: 'WIN', kills: 28, deaths: 16, assists: 8, hsPercent: 17, damage: 2877 },
+      { name: 'DrKush', team: 'Side B', result: 'WIN', kills: 23, deaths: 18, assists: 8, hsPercent: 47, damage: 2656 },
+      { name: 'DT', team: 'Side B', result: 'WIN', kills: 25, deaths: 16, assists: 6, hsPercent: 32, damage: 2574 },
+      { name: 'Mr.Robot', team: 'Side B', result: 'WIN', kills: 16, deaths: 14, assists: 2, hsPercent: 18, damage: 1436 },
+      { name: 'Aman', team: 'Side B', result: 'WIN', kills: 14, deaths: 15, assists: 3, hsPercent: 26, damage: 1413 }
+    ]
+  },
+  {
+    date: july7Date,
+    matchDayTitle: july7MatchDayTitle,
+    map: 'Dust II',
+    teamAScore: 10,
+    teamBScore: 13,
+    winningTeam: 'Side B',
+    rows: [
+      { name: 'DrKush', team: 'Side A', result: 'LOSS', kills: 24, deaths: 19, assists: 8, hsPercent: 45, damage: 2424 },
+      { name: 'DT', team: 'Side A', result: 'LOSS', kills: 20, deaths: 18, assists: 7, hsPercent: 50, damage: 2235 },
+      { name: 'Mr.Robot', team: 'Side A', result: 'LOSS', kills: 23, deaths: 17, assists: 3, hsPercent: 34, damage: 2206 },
+      { name: 'Aman', team: 'Side A', result: 'LOSS', kills: 15, deaths: 21, assists: 8, hsPercent: 40, damage: 1689 },
+      { name: 'fatal_destiny', team: 'Side A', result: 'LOSS', kills: 9, deaths: 21, assists: 7, hsPercent: 44, damage: 1122 },
+      { name: 'GULLU', team: 'Side B', result: 'WIN', kills: 26, deaths: 15, assists: 4, hsPercent: 19, damage: 2811 },
+      { name: 'Mr. DJANGO', team: 'Side B', result: 'WIN', kills: 31, deaths: 11, assists: 4, hsPercent: 38, damage: 2731 },
+      { name: 'gillranversingh38', team: 'Side B', result: 'WIN', kills: 19, deaths: 17, assists: 6, hsPercent: 31, damage: 1972 },
+      { name: 'Radha', team: 'Side B', result: 'WIN', kills: 20, deaths: 17, assists: 1, hsPercent: 15, damage: 1972 },
+      { name: 'Bob Marde', team: 'Side B', result: 'WIN', kills: 8, deaths: 19, assists: 9, hsPercent: 26, damage: 1389 },
+      { name: 'Mere Baap', team: 'Side B', result: 'WIN', kills: 6, deaths: 17, assists: 5, hsPercent: 16, damage: 778 }
+    ]
+  },
+  {
+    date: july7Date,
+    matchDayTitle: july7MatchDayTitle,
+    map: 'Inferno',
+    teamAScore: 13,
+    teamBScore: 10,
+    winningTeam: 'Side A',
+    rows: [
+      { name: 'Mr. DJANGO', team: 'Side A', result: 'WIN', kills: 12, deaths: 4, assists: 2, hsPercent: 61, damage: 4494 },
+      { name: 'GULLU', team: 'Side A', result: 'WIN', kills: 18, deaths: 6, assists: 4, hsPercent: 4, damage: 2377 },
+      { name: 'Radha', team: 'Side A', result: 'WIN', kills: 18, deaths: 3, assists: 3, hsPercent: 15, damage: 1774 },
+      { name: 'Bob Marde', team: 'Side A', result: 'WIN', kills: 16, deaths: 6, assists: 6, hsPercent: 47, damage: 1720 },
+      { name: 'gillranversingh38', team: 'Side A', result: 'WIN', kills: 18, deaths: 9, assists: 12, hsPercent: 12, damage: 1372 },
+      { name: 'Mere Baap', team: 'Side A', result: 'WIN', kills: 18, deaths: 1, assists: 1, hsPercent: 75, damage: 644 },
+      { name: 'Mr.Robot', team: 'Side B', result: 'LOSS', kills: 19, deaths: 21, assists: 8, hsPercent: 42, damage: 2381 },
+      { name: 'DT', team: 'Side B', result: 'LOSS', kills: 21, deaths: 19, assists: 4, hsPercent: 19, damage: 2073 },
+      { name: 'DrKush', team: 'Side B', result: 'LOSS', kills: 16, deaths: 19, assists: 8, hsPercent: 37, damage: 1818 },
+      { name: 'Aman', team: 'Side B', result: 'LOSS', kills: 15, deaths: 20, assists: 2, hsPercent: 33, damage: 1609 },
+      { name: 'fatal_destiny', team: 'Side B', result: 'LOSS', kills: 14, deaths: 22, assists: 2, hsPercent: 50, damage: 1406 }
+    ]
+  }
+];
+
 function norm(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -601,6 +669,10 @@ function canonicalImportName(name: string) {
   const normalized = norm(name);
   if (normalized === norm('Aks')) return 'aks289';
   if (normalized === norm('amansanghvi1') || normalized === norm('amansanghv1')) return 'Aman';
+  if (normalized === norm('Django') || normalized === norm('Mr. DJANGO')) return 'Mr. DJANGO';
+  if (normalized === norm('Gullu') || normalized === norm('GULLU')) return 'GULLU';
+  if (normalized === norm('Mr Robot') || normalized === norm('Mr.Robot')) return 'Mr.Robot';
+  if (normalized === norm('Dr Kush') || normalized === norm('DrKush')) return 'DrKush';
   if (normalized === norm('!!@DaNgErBoY@!!')) return '!!EDaNgErBoYe!!';
   return name;
 }
@@ -972,6 +1044,70 @@ async function importJune24DataIfMissing() {
   localStorage.setItem('cs2_imported_june24_match_cards_v1', '1');
 }
 
+async function importJuly7DataIfMissing() {
+  const flag = localStorage.getItem('cs2_imported_july7_match_cards_v1');
+  const hasJuly7 = await db.matches.where('date').equals(july7Date).count();
+  if (flag === '1' || hasJuly7 > 0) {
+    localStorage.setItem('cs2_imported_july7_match_cards_v1', '1');
+    return;
+  }
+
+  const season = await db.seasons.filter((s) => s.isCurrent).first() || await db.seasons.orderBy('id').last();
+  let seasonId = season?.id;
+  if (!seasonId) {
+    seasonId = Number(await db.seasons.add({ name: 'Season 1', isCurrent: true, archived: false, createdAt: now() }));
+  }
+
+  const matchDayId = Number(await db.match_days.add({
+    seasonId: Number(seasonId),
+    title: july7MatchDayTitle,
+    eventDate: july7Date,
+    notes: 'Imported from July 7 screenshots',
+    createdAt: now()
+  }));
+
+  for (const match of july7Matches) {
+    const matchId = Number(await db.matches.add({
+      seasonId: Number(seasonId),
+      matchDayId,
+      date: match.date,
+      map: match.map,
+      teamAName: 'Side A',
+      teamBName: 'Side B',
+      teamAScore: match.teamAScore,
+      teamBScore: match.teamBScore,
+      winningTeam: match.winningTeam,
+      notes: 'Imported from July 7 screenshots',
+      createdAt: now()
+    }));
+
+    const rows = [];
+    for (const row of match.rows) {
+      const canonicalName = canonicalImportName(row.name);
+      const playerId = await getOrCreatePlayerId(canonicalName);
+      if (canonicalName !== row.name) {
+        await addAliasIfMissing(playerId, row.name);
+      }
+      rows.push({
+        matchId,
+        playerId,
+        team: row.team,
+        result: row.result,
+        kills: row.kills,
+        deaths: row.deaths,
+        assists: row.assists,
+        damage: row.damage ?? undefined,
+        hsPercent: row.hsPercent ?? undefined,
+        mvps: row.mvps ?? 0,
+        points: points(row.result, row.kills, row.assists, row.deaths)
+      });
+    }
+    await db.match_players.bulkAdd(rows);
+  }
+
+  localStorage.setItem('cs2_imported_july7_match_cards_v1', '1');
+}
+
 async function repairJune24Dust2IfNeeded() {
   const match = await db.matches.where('[date+map]').equals([june24Date, 'Dust II']).first();
   if (!match) return;
@@ -1223,6 +1359,7 @@ export async function seedIfEmpty() {
   await repairJune11MirageResultsIfNeeded();
   await importJune18DataIfMissing();
   await importJune24DataIfMissing();
+  await importJuly7DataIfMissing();
   await repairJune24Dust2IfNeeded();
   await mergeAmanAliasIfNeeded();
 }
