@@ -534,6 +534,29 @@ function buildMatchScoreHistory(matches: Match[], rows: MatchPlayer[]) {
   return byPlayer;
 }
 
+export function buildPlayerMatchScoreTrend(playerId: number, matches: Match[], rows: MatchPlayer[]) {
+  const eligibleRows = rows.filter(isScoringEligible);
+  const rowsByMatchId = new Map<number, MatchPlayer[]>();
+  for (const row of eligibleRows) {
+    const matchRows = rowsByMatchId.get(row.matchId) || [];
+    matchRows.push(row);
+    rowsByMatchId.set(row.matchId, matchRows);
+  }
+
+  return matches
+    .map((match) => {
+      const matchId = match.id || 0;
+      const matchRows = rowsByMatchId.get(matchId) || [];
+      if (!matchRows.some((row) => row.playerId === playerId)) return null;
+      const score = calculateMatchScoresForMatch(match, matchRows)
+        .find((item) => item.playerId === playerId)?.score;
+      if (score === undefined) return null;
+      return { matchId, date: match.date, score };
+    })
+    .filter((entry): entry is { matchId: number; date: string; score: number } => entry !== null)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.matchId - b.matchId);
+}
+
 export function buildLeaderboardRows(
   players: Player[],
   matchDays: MatchDay[],

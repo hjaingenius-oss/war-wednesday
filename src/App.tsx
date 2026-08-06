@@ -7,7 +7,7 @@ import { calculatePoints, safeKD } from './lib/scoring';
 import {
   buildLeaderboardRows,
   buildFunAwards,
-  calculateMatchScoresForMatch,
+  buildPlayerMatchScoreTrend,
   calculateMatchValue,
   calculateTotalPointsForMatch,
   generateMatchDisplayIds,
@@ -278,38 +278,18 @@ function PlayerProfile() {
   const board = buildLeaderboardRows(players, matchDays, matches, rows, knifeEvents, 'all');
   const fun = buildFunAwards(players, rows, matches, board.allRows, 'all');
   const profile = board.allRows.find((r)=>r.playerId===pid);
-  const pr = rows.filter((r)=>r.playerId===pid);
+  const pr = rows.filter((r) => r.playerId === pid && isScoringEligible(r));
   const kills = pr.reduce((s,r)=>s+r.kills,0), deaths = pr.reduce((s,r)=>s+r.deaths,0), assists=pr.reduce((s,r)=>s+r.assists,0), points=pr.reduce((s,r)=>s+calculateTotalPointsForMatch(r),0);
   const wins = pr.filter((r)=>r.result==='WIN').length, losses = pr.filter((r)=>r.result==='LOSS').length;
   const knifeKills = knifeEvents.filter((e) => e.attackerPlayerId === pid).length;
   const knifeDeaths = knifeEvents.filter((e) => e.victimPlayerId === pid).length;
-  const matchById = useMemo(() => new Map(matches.map((match) => [match.id, match])), [matches]);
   const trend = useMemo(() => {
-    const seen = new Set<number>();
-    const rowsByMatch = new Map<number, MatchPlayer[]>();
-    for (const row of pr) {
-      const arr = rowsByMatch.get(row.matchId) || [];
-      arr.push(row);
-      rowsByMatch.set(row.matchId, arr);
-    }
-    return pr
-      .map((row) => {
-        if (seen.has(row.matchId)) return null;
-        seen.add(row.matchId);
-        const match = matchById.get(row.matchId);
-        if (!match) return null;
-        const matchRows = rowsByMatch.get(row.matchId) || [];
-        const matchScore = calculateMatchScoresForMatch(match, matchRows).find((item) => item.playerId === row.playerId);
-        return {
-          matchId: row.matchId,
-          match: getMatchDisplayId(row.matchId, matchDisplayIds),
-          date: match.date,
-          score: fmt1(matchScore?.computedScore ?? calculateMatchValue(row, match, matchRows))
-        };
-      })
-      .filter((value): value is { matchId: number; match: string; date: string; score: number } => Boolean(value))
-      .sort((a, b) => a.date.localeCompare(b.date) || a.matchId - b.matchId);
-  }, [pr, matchById, matchDisplayIds]);
+    return buildPlayerMatchScoreTrend(pid, matches, rows).map((entry) => ({
+      ...entry,
+      match: getMatchDisplayId(entry.matchId, matchDisplayIds),
+      score: fmt1(entry.score)
+    }));
+  }, [pid, matches, rows, matchDisplayIds]);
   const knifeHistory = knifeEvents.filter((e) => e.attackerPlayerId === pid || e.victimPlayerId === pid).slice().reverse();
   const games10 = pr.filter((r) => r.kills >= 10).length;
   const games20 = pr.filter((r) => r.kills >= 20).length;
