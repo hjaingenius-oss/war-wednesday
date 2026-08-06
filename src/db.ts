@@ -489,14 +489,14 @@ const june24Matches: RawMatch[] = [
       { name: 'Bob Marde', team: 'Side A', result: 'LOSS', kills: 11, deaths: 18, assists: 4, mvps: 1, hsPercent: 54, damage: 1219, utilityDamage: 66, enemyFlashed: 6 },
       { name: 'Mere Baap', team: 'Side A', result: 'LOSS', kills: 12, deaths: 20, assists: 3, mvps: 0, hsPercent: 33, damage: 1495, utilityDamage: 0, enemyFlashed: 0 },
       { name: 'Daa', team: 'Side A', result: 'LOSS', kills: 10, deaths: 20, assists: 5, mvps: 2, hsPercent: 30, damage: 1426, utilityDamage: 0, enemyFlashed: 0 },
-      { name: 'Mr. DJANGO', team: 'Side A', result: 'LOSS', kills: 12, deaths: 4, assists: 2, mvps: 2, hsPercent: 41, damage: 1242, utilityDamage: 4, enemyFlashed: 0 },
+      { name: 'Mr. DJANGO', team: 'Side A', result: 'LOSS', kills: 12, deaths: 4, assists: 2, mvps: 2, hsPercent: 41, damage: 1242, utilityDamage: 4, enemyFlashed: 0, scoringEligible: false, note: 'Partial-game row; joined or left during the game.' },
       { name: 'VPS', team: 'Side B', result: 'WIN', kills: 24, deaths: 15, assists: 6, mvps: 2, hsPercent: 29, damage: 2415, utilityDamage: 220, enemyFlashed: 0 },
       { name: 'amansanghvi1', team: 'Side B', result: 'WIN', kills: 19, deaths: 16, assists: 8, mvps: 2, hsPercent: 31, damage: 1863, utilityDamage: 0, enemyFlashed: 5 },
       { name: 'Aks', team: 'Side B', result: 'WIN', kills: 20, deaths: 21, assists: 6, mvps: 2, hsPercent: 60, damage: 2254, utilityDamage: 0, enemyFlashed: 7 },
       { name: 'DrKush', team: 'Side B', result: 'WIN', kills: 20, deaths: 11, assists: 7, mvps: 2, hsPercent: 35, damage: 1817, utilityDamage: 42, enemyFlashed: 10 },
       { name: 'Radha', team: 'Side B', result: 'WIN', kills: 19, deaths: 18, assists: 3, mvps: 2, hsPercent: 0, damage: 1978, utilityDamage: 0, enemyFlashed: 8 },
       { name: 'Voldemort', team: 'Side B', result: 'WIN', kills: 10, deaths: 18, assists: 3, mvps: 0, hsPercent: 50, damage: 1104, utilityDamage: 277, enemyFlashed: 0 },
-      { name: 'thomas', team: 'Side B', result: 'WIN', kills: 2, deaths: 6, assists: 4, mvps: 0, hsPercent: 100, damage: 460, utilityDamage: 0, enemyFlashed: 0 }
+      { name: 'thomas', team: 'Side B', result: 'WIN', kills: 2, deaths: 6, assists: 4, mvps: 0, hsPercent: 100, damage: 460, utilityDamage: 0, enemyFlashed: 0, scoringEligible: false, note: 'Partial-game row; joined or left during the game.' }
     ]
   },
   {
@@ -650,12 +650,12 @@ const july7Matches: RawMatch[] = [
     teamBScore: 10,
     winningTeam: 'Side A',
     rows: [
-      { name: 'Mr. DJANGO', team: 'Side A', result: 'WIN', kills: 12, deaths: 4, assists: 2, hsPercent: 61, damage: 4494 },
-      { name: 'GULLU', team: 'Side A', result: 'WIN', kills: 18, deaths: 6, assists: 4, hsPercent: 4, damage: 2377 },
-      { name: 'Radha', team: 'Side A', result: 'WIN', kills: 18, deaths: 3, assists: 3, hsPercent: 15, damage: 1774 },
-      { name: 'Bob Marde', team: 'Side A', result: 'WIN', kills: 16, deaths: 6, assists: 6, hsPercent: 47, damage: 1720 },
-      { name: 'gillranversingh38', team: 'Side A', result: 'WIN', kills: 18, deaths: 9, assists: 12, hsPercent: 12, damage: 1372 },
-      { name: 'Mere Baap', team: 'Side A', result: 'WIN', kills: 8, deaths: 18, assists: 1, hsPercent: 75, damage: 644 },
+      { name: 'Mr. DJANGO', team: 'Side A', result: 'WIN', kills: 44, deaths: 12, assists: 4, hsPercent: 61, damage: 4494 },
+      { name: 'GULLU', team: 'Side A', result: 'WIN', kills: 23, deaths: 18, assists: 6, hsPercent: 4, damage: 2377 },
+      { name: 'Radha', team: 'Side A', result: 'WIN', kills: 19, deaths: 19, assists: 3, hsPercent: 15, damage: 1774 },
+      { name: 'Bob Marde', team: 'Side A', result: 'WIN', kills: 17, deaths: 16, assists: 6, hsPercent: 47, damage: 1720 },
+      { name: 'gillranversingh38', team: 'Side A', result: 'WIN', kills: 8, deaths: 18, assists: 9, hsPercent: 12, damage: 1372 },
+      { name: 'Mere Baap', team: 'Side A', result: 'WIN', kills: 8, deaths: 18, assists: 8, hsPercent: 75, damage: 644, note: 'Assists set to 8 per explicit correction.' },
       { name: 'Mr.Robot', team: 'Side B', result: 'LOSS', kills: 19, deaths: 21, assists: 8, hsPercent: 42, damage: 2381 },
       { name: 'DT', team: 'Side B', result: 'LOSS', kills: 21, deaths: 19, assists: 4, hsPercent: 19, damage: 2073 },
       { name: 'DrKush', team: 'Side B', result: 'LOSS', kills: 16, deaths: 19, assists: 8, hsPercent: 37, damage: 1818 },
@@ -700,16 +700,15 @@ const july22Matches: RawMatch[] = [
       { name: 'DrKush', team: 'Side A', result: 'WIN', kills: 32, deaths: 22, assists: 3, hsPercent: 40, damage: 3024, utilityDamage: 98, enemyFlashed: 17 },
       { name: 'GULLU', team: 'Side A', result: 'WIN', kills: 27, deaths: 16, assists: 5, hsPercent: 11, damage: 2568, utilityDamage: 171, enemyFlashed: 4 },
       { name: 'amansanghv1', team: 'Side A', result: 'WIN', kills: 21, deaths: 18, assists: 4, hsPercent: 38, damage: 2280, utilityDamage: 19, enemyFlashed: 4 },
-      { name: 'T-Rex', team: 'Side A', result: 'WIN', kills: 14, deaths: 22, assists: 11, hsPercent: 14, damage: 2064, utilityDamage: 18, enemyFlashed: 0 },
       { name: 'MAVERICK', team: 'Side A', result: 'WIN', kills: 22, deaths: 19, assists: 4, hsPercent: 40, damage: 1872, utilityDamage: 168, enemyFlashed: 8 },
       { name: 'VPS', team: 'Side A', result: 'WIN', kills: 9, deaths: 16, assists: 5, hsPercent: 55, damage: 1392, utilityDamage: 121, enemyFlashed: 20 },
-      { name: 'Hodor bitch!', team: 'Side A', result: 'WIN', kills: 6, deaths: 15, assists: 5, hsPercent: 16, damage: 912, utilityDamage: 121, enemyFlashed: 9 },
+      { name: 'Hodor bitch!', team: 'Side A', result: 'WIN', kills: 6, deaths: 15, assists: 5, hsPercent: 16, damage: 912, utilityDamage: 121, enemyFlashed: 9, scoringEligible: false, note: 'Joined midway; partial-game row excluded from scoring.' },
       { name: 'DT', team: 'Side B', result: 'LOSS', kills: 28, deaths: 18, assists: 7, hsPercent: 32, damage: 2448, utilityDamage: 49, enemyFlashed: 2 },
       { name: 'Manson', team: 'Side B', result: 'LOSS', kills: 27, deaths: 17, assists: 5, hsPercent: 22, damage: 2880, utilityDamage: 0, enemyFlashed: 3 },
       { name: 'Radha', team: 'Side B', result: 'LOSS', kills: 19, deaths: 20, assists: 8, hsPercent: 42, damage: 2256, utilityDamage: 0, enemyFlashed: 8 },
       { name: 'Voldemort', team: 'Side B', result: 'LOSS', kills: 14, deaths: 20, assists: 4, hsPercent: 36, damage: 1392, utilityDamage: 47, enemyFlashed: 0 },
       { name: 'Bob Marde', team: 'Side B', result: 'LOSS', kills: 15, deaths: 19, assists: 5, hsPercent: 40, damage: 1896, utilityDamage: 93, enemyFlashed: 9 },
-      { name: '!!EDaNgErBoYe!!', team: 'Side B', result: 'LOSS', kills: 11, deaths: 18, assists: 6, hsPercent: 18, damage: 1272, utilityDamage: 48, enemyFlashed: 14 },
+      { name: '!!EDaNgErBoYe!!', team: 'Side B', result: 'LOSS', kills: 11, deaths: 18, assists: 6, hsPercent: 18, damage: 1272, utilityDamage: 48, enemyFlashed: 14, scoringEligible: false, note: 'Joined midway; partial-game row excluded from scoring.' },
       { name: 'fatal_destiny', team: 'Side B', result: 'LOSS', kills: 11, deaths: 22, assists: 5, hsPercent: 44, damage: 1056, utilityDamage: 0, enemyFlashed: 0 }
     ]
   },
@@ -841,7 +840,7 @@ const aug5Matches: RawMatch[] = [
       { name: 'PeekaBoom', team: 'Terrorists', result: 'WIN', kills: 14, deaths: 12, assists: 3, mvps: 1, score: 46, hsPercent: 50, kd: 1.16, adr: 83, utilityDamage: 91, enemyFlashed: 0 },
       { name: 'Dangerboy', displayName: '!!@DaNgErBoY@!!', team: 'Terrorists', result: 'WIN', kills: 12, deaths: 11, assists: 5, mvps: 1, score: 45, hsPercent: 33, kd: 1.09, adr: 66, utilityDamage: 32, enemyFlashed: 8 },
       { name: 'Aks', displayName: 'Stormbre@ker', team: 'Terrorists', result: 'WIN', kills: 12, deaths: 15, assists: 5, mvps: 0, score: 44, hsPercent: 16, kd: 0.80, adr: 73, utilityDamage: 26, enemyFlashed: 10 },
-      { name: 'Aman', team: 'Counter-Terrorists', result: 'LOSS', kills: 10, deaths: 18, assists: 6, mvps: 0, score: 38, hsPercent: 40, kd: 0.55, adr: 68, utilityDamage: 141, enemyFlashed: 1 }
+      { name: 'Aman', team: 'Counter-Terrorists', result: 'LOSS', kills: 10, deaths: 18, assists: 6, mvps: 0, score: 38, hsPercent: 40, kd: 0.55, adr: 68, utilityDamage: 141, enemyFlashed: 1, gapFill: true, note: 'Synthetic logout penalty copied from the lowest scorer as instructed.' }
     ]
   },
   {
@@ -881,6 +880,8 @@ async function repairJuly22DataIfNeeded() {
   const playerIdByName = new Map(players.map((p) => [p.name, p.id || 0]));
   const tRexId = playerIdByName.get('T-Rex') || 0;
   const radhaId = playerIdByName.get('Radha') || 0;
+  const dangerboyId = playerIdByName.get('!!EDaNgErBoYe!!') || 0;
+  const hodorId = playerIdByName.get('Hodor bitch!') || 0;
 
   const deriveResult = (team: string, winningTeam: string): MatchResult =>
     winningTeam === 'Draw' ? 'DRAW' : team === winningTeam ? 'WIN' : 'LOSS';
@@ -893,6 +894,30 @@ async function repairJuly22DataIfNeeded() {
       .first();
     if (tRexRow?.id) {
       await db.match_players.delete(tRexRow.id);
+    }
+  }
+
+  const dust = july22Matches.find((match) => match.map === 'Dust II');
+  if (dust?.id) {
+    if (tRexId) {
+      const tRexRow = await db.match_players
+        .where('[matchId+playerId]')
+        .equals([dust.id, tRexId])
+        .first();
+      if (tRexRow?.id) await db.match_players.delete(tRexRow.id);
+    }
+
+    for (const playerId of [dangerboyId, hodorId].filter(Boolean)) {
+      const partialRow = await db.match_players
+        .where('[matchId+playerId]')
+        .equals([dust.id, playerId])
+        .first();
+      if (partialRow?.id) {
+        await db.match_players.update(partialRow.id, {
+          scoringEligible: false,
+          participationNote: 'Joined midway; partial-game row excluded from scoring.'
+        });
+      }
     }
   }
 
@@ -999,7 +1024,10 @@ async function importJuly22DataIfMissing() {
         utilityDamage: row.utilityDamage ?? undefined,
         enemyFlashed: row.enemyFlashed ?? undefined,
         mvps: row.mvps ?? 0,
-        points: points(row.result, row.kills, row.assists, row.deaths)
+        points: points(row.result, row.kills, row.assists, row.deaths),
+        scoringEligible: row.scoringEligible !== false,
+        participationNote: row.note,
+        gapFill: row.gapFill === true
       });
     }
     await db.match_players.bulkAdd(rows);
@@ -1066,7 +1094,10 @@ async function importAug5DataIfMissing() {
         utilityDamage: row.utilityDamage ?? undefined,
         enemyFlashed: row.enemyFlashed ?? undefined,
         mvps: row.mvps ?? 0,
-        points: points(row.result, row.kills, row.assists, row.deaths)
+        points: points(row.result, row.kills, row.assists, row.deaths),
+        scoringEligible: row.scoringEligible !== false,
+        participationNote: row.note,
+        gapFill: row.gapFill === true
       });
     }
     await db.match_players.bulkAdd(rows);
@@ -1138,6 +1169,19 @@ async function repairAug5KnifeStatsIfNeeded() {
       attackerPlayerId: mereBaapId,
       victimPlayerId: bobId || 0,
       createdAt: now()
+    });
+  }
+}
+
+async function repairAug5SyntheticRowsIfNeeded() {
+  const ancient = await db.matches.where('[date+map]').equals([aug5Date, 'Ancient']).first();
+  const aman = await db.players.where('name').equals('Aman').first();
+  if (!ancient?.id || !aman?.id) return;
+  const row = await db.match_players.where('[matchId+playerId]').equals([ancient.id, aman.id]).first();
+  if (row?.id) {
+    await db.match_players.update(row.id, {
+      gapFill: true,
+      participationNote: 'Synthetic logout penalty copied from the lowest scorer as instructed.'
     });
   }
 }
@@ -1336,7 +1380,10 @@ async function importJune11DataIfMissing() {
         damage: row.damage ?? undefined,
         hsPercent: row.hsPercent ?? undefined,
         mvps: 0,
-        points: points(row.result, row.kills, row.assists, row.deaths)
+        points: points(row.result, row.kills, row.assists, row.deaths),
+        scoringEligible: row.scoringEligible !== false,
+        participationNote: row.note,
+        gapFill: row.gapFill === true
       });
     }
     await db.match_players.bulkAdd(rows);
@@ -1425,7 +1472,10 @@ async function importJune18DataIfMissing() {
         utilityDamage: row.utilityDamage ?? undefined,
         enemyFlashed: row.enemyFlashed ?? undefined,
         mvps: row.mvps ?? 0,
-        points: points(row.result, row.kills, row.assists, row.deaths)
+        points: points(row.result, row.kills, row.assists, row.deaths),
+        scoringEligible: row.scoringEligible !== false,
+        participationNote: row.note,
+        gapFill: row.gapFill === true
       });
     }
     await db.match_players.bulkAdd(rows);
@@ -1540,7 +1590,10 @@ async function importJune24DataIfMissing() {
         utilityDamage: row.utilityDamage ?? undefined,
         enemyFlashed: row.enemyFlashed ?? undefined,
         mvps: row.mvps ?? 0,
-        points: points(row.result, row.kills, row.assists, row.deaths)
+        points: points(row.result, row.kills, row.assists, row.deaths),
+        scoringEligible: row.scoringEligible !== false,
+        participationNote: row.note,
+        gapFill: row.gapFill === true
       });
     }
     await db.match_players.bulkAdd(rows);
@@ -1570,8 +1623,31 @@ async function importJune24DataIfMissing() {
   localStorage.setItem('cs2_imported_june24_match_cards_v1', '1');
 }
 
+async function repairJune24PartialRowsIfNeeded() {
+  const inferno = await db.matches.where('[date+map]').equals([june24Date, 'Inferno']).first();
+  if (!inferno?.id) return;
+
+  for (const playerName of ['Mr. DJANGO', 'thomas']) {
+    const player = await db.players.where('name').equals(playerName).first();
+    if (!player?.id) continue;
+    const row = await db.match_players
+      .where('[matchId+playerId]')
+      .equals([inferno.id, player.id])
+      .first();
+    if (row?.id) {
+      await db.match_players.update(row.id, {
+        scoringEligible: false,
+        participationNote: 'Partial-game row; joined or left during the game.'
+      });
+    }
+  }
+}
+
 async function replaceJuly7DataIfNeeded() {
+  const flag = localStorage.getItem('cs2_imported_july7_match_cards_v3');
   const existingMatches = await db.matches.where('date').equals(july7Date).toArray();
+  if (flag === '1' && existingMatches.length === july7Matches.length) return;
+
   const existingMatchIds = existingMatches.map((match) => match.id).filter((id): id is number => typeof id === 'number');
   const existingMatchDayIds = [...new Set(existingMatches.map((match) => match.matchDayId).filter((id): id is number => typeof id === 'number'))];
 
@@ -1587,9 +1663,6 @@ async function replaceJuly7DataIfNeeded() {
       await db.match_days.delete(matchDayId);
     }
   }
-
-  const flag = localStorage.getItem('cs2_imported_july7_match_cards_v2');
-  if (flag === '1') return;
 
   const season = await db.seasons.filter((s) => s.isCurrent).first() || await db.seasons.orderBy('id').last();
   let seasonId = season?.id;
@@ -1638,13 +1711,16 @@ async function replaceJuly7DataIfNeeded() {
         damage: row.damage ?? undefined,
         hsPercent: row.hsPercent ?? undefined,
         mvps: row.mvps ?? 0,
-        points: points(row.result, row.kills, row.assists, row.deaths)
+        points: points(row.result, row.kills, row.assists, row.deaths),
+        scoringEligible: row.scoringEligible !== false,
+        participationNote: row.note,
+        gapFill: row.gapFill === true
       });
     }
     await db.match_players.bulkAdd(rows);
   }
 
-  localStorage.setItem('cs2_imported_july7_match_cards_v2', '1');
+  localStorage.setItem('cs2_imported_july7_match_cards_v3', '1');
 }
 
 async function repairJune24Dust2IfNeeded() {
@@ -1902,11 +1978,13 @@ export async function seedIfEmpty() {
   await importJune18DataIfMissing();
   await repairJune18DamageIfNeeded();
   await importJune24DataIfMissing();
+  await repairJune24PartialRowsIfNeeded();
   await replaceJuly7DataIfNeeded();
   await importJuly22DataIfMissing();
   await repairJuly22DataIfNeeded();
   await importAug5DataIfMissing();
   await repairAug5KnifeStatsIfNeeded();
+  await repairAug5SyntheticRowsIfNeeded();
   await repairJune24Dust2IfNeeded();
   await mergeAmanAliasIfNeeded();
 }

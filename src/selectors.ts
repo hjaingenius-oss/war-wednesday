@@ -887,7 +887,19 @@ export function buildFunAwards(
       .map(([playerId, mapRows]) => {
         const mapAppearances = mapRows.length;
         if (mapAppearances < 4) return null;
-        const mapMatchValueAverage = average(mapRows.map((r) => calculateMatchValue(r, matchById.get(r.matchId), mapRows)));
+        // Score every appearance against that game's complete eligible lobby.
+        // Passing a player's cross-game rows here corrupts the lobby normalization.
+        const mapMatchValueAverage = average(
+          mapRows.map((r) =>
+            calculateMatchValue(
+              r,
+              matchById.get(r.matchId),
+              rowsByMatchId.get(r.matchId) || []
+            )
+          )
+        );
+        // A map can have no King; never crown a below-average performer by default.
+        if (mapMatchValueAverage < SCORING.baseScoreMean) return null;
         const sampleMultiplier = mapAppearances >= 5 ? 1 : 0.95;
         const mapDominanceScore = mapMatchValueAverage * sampleMultiplier;
         const wins = mapRows.filter((r) => r.result === 'WIN').length;

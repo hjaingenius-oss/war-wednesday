@@ -63,6 +63,7 @@ export interface MatchPlayer {
   points: number;
   scoringEligible?: boolean;
   participationNote?: string;
+  gapFill?: boolean;
 }
 
 export interface KnifeEvent {
