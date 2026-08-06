@@ -155,6 +155,10 @@ function hasRealMvpValue(row: Pick<MatchPlayer, 'mvps'>) {
   return row.mvps !== undefined && row.mvps !== null && Number.isFinite(Number(row.mvps));
 }
 
+export function isScoringEligible(row: Pick<MatchPlayer, 'scoringEligible'>) {
+  return row.scoringEligible !== false;
+}
+
 function getRowTeamSlot(match: Pick<Match, 'teamAName' | 'teamBName'>, row: Pick<MatchPlayer, 'team'>) {
   if (row.team && row.team === match.teamBName) return 'B';
   if (row.team && row.team === match.teamAName) return 'A';
@@ -162,15 +166,16 @@ function getRowTeamSlot(match: Pick<Match, 'teamAName' | 'teamBName'>, row: Pick
 }
 
 export function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]): MatchScoreBreakdown[] {
+  const eligibleRows = rows.filter(isScoringEligible);
   const rounds = Math.max(1, safeNumber(match.teamAScore) + safeNumber(match.teamBScore));
-  const coreStats = rows.map((row) => ({
+  const coreStats = eligibleRows.map((row) => ({
     row,
     kpr: safeNumber(row.kills) / rounds,
     dpr: safeNumber(row.deaths) / rounds,
     apr: safeNumber(row.assists) / rounds
   }));
 
-  const actualDamageRows = rows.filter((row) => hasRealDamageValue(row));
+  const actualDamageRows = eligibleRows.filter((row) => hasRealDamageValue(row));
   const actualDamageAdrs = actualDamageRows.map((row) => deriveAdr(safeNumber(row.damage), rounds));
   const lobbyAvgAdrFromActualDamage = actualDamageAdrs.length ? average(actualDamageAdrs) : SCORING.fallbackAdrBaseline;
 
@@ -178,12 +183,12 @@ export function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]):
   const avgDPR = average(coreStats.map((item) => item.dpr));
   const avgAPR = average(coreStats.map((item) => item.apr));
 
-  const utilityAvailable = rows.filter((row) => hasRealUtilityValue(row)).length / Math.max(1, rows.length) >= SCORING.optionalMetricAvailabilityThreshold;
-  const flashAvailable = rows.filter((row) => hasRealFlashValue(row)).length / Math.max(1, rows.length) >= SCORING.optionalMetricAvailabilityThreshold;
-  const mvpAvailable = rows.filter((row) => hasRealMvpValue(row)).length / Math.max(1, rows.length) >= SCORING.optionalMetricAvailabilityThreshold;
+  const utilityAvailable = eligibleRows.filter((row) => hasRealUtilityValue(row)).length / Math.max(1, eligibleRows.length) >= SCORING.optionalMetricAvailabilityThreshold;
+  const flashAvailable = eligibleRows.filter((row) => hasRealFlashValue(row)).length / Math.max(1, eligibleRows.length) >= SCORING.optionalMetricAvailabilityThreshold;
+  const mvpAvailable = eligibleRows.filter((row) => hasRealMvpValue(row)).length / Math.max(1, eligibleRows.length) >= SCORING.optionalMetricAvailabilityThreshold;
 
   const averages = {
-    adr: average(rows.map((row) => (
+    adr: average(eligibleRows.map((row) => (
       hasRealDamageValue(row)
         ? deriveAdr(safeNumber(row.damage), rounds)
         : lobbyAvgAdrFromActualDamage * (
@@ -195,9 +200,9 @@ export function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]):
     kpr: average(coreStats.map((item) => item.kpr)),
     dpr: average(coreStats.map((item) => item.dpr)),
     apr: average(coreStats.map((item) => item.apr)),
-    udr: utilityAvailable ? average(rows.filter((row) => hasRealUtilityValue(row)).map((row) => safeNumber(row.utilityDamage) / rounds)) : 0,
-    efr: flashAvailable ? average(rows.filter((row) => hasRealFlashValue(row)).map((row) => safeNumber(row.enemyFlashed) / rounds)) : 0,
-    mvpr: mvpAvailable ? average(rows.filter((row) => hasRealMvpValue(row)).map((row) => safeNumber(row.mvps) / rounds)) : 0
+    udr: utilityAvailable ? average(eligibleRows.filter((row) => hasRealUtilityValue(row)).map((row) => safeNumber(row.utilityDamage) / rounds)) : 0,
+    efr: flashAvailable ? average(eligibleRows.filter((row) => hasRealFlashValue(row)).map((row) => safeNumber(row.enemyFlashed) / rounds)) : 0,
+    mvpr: mvpAvailable ? average(eligibleRows.filter((row) => hasRealMvpValue(row)).map((row) => safeNumber(row.mvps) / rounds)) : 0
   };
 
   const prelim = coreStats.map((item) => {
@@ -258,7 +263,7 @@ export function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]):
   });
 
   const teamAverages = new Map<string, number>();
-  for (const team of [...new Set(rows.map((row) => row.team || 'Unknown'))]) {
+  for (const team of [...new Set(eligibleRows.map((row) => row.team || 'Unknown'))]) {
     const teamBaseScores = prelim.filter((item) => (item.row.team || 'Unknown') === team).map((item) => item.baseScore);
     teamAverages.set(team || 'Unknown', average(teamBaseScores));
   }
@@ -539,7 +544,8 @@ export function buildLeaderboardRows(
 ) {
   const windowMatches = getMatchWindow(matches, filter);
   const windowMatchIds = new Set(windowMatches.map((m) => m.id));
-  const windowRows = rows.filter((r) => windowMatchIds.has(r.matchId));
+  const eligibleRows = rows.filter(isScoringEligible);
+  const windowRows = eligibleRows.filter((r) => windowMatchIds.has(r.matchId));
   const windowKnifeEvents = knifeEvents.filter((e) => windowMatchIds.has(e.matchId));
   const windowMatchDayIds = new Set(windowMatches.map((m) => m.matchDayId).filter(Boolean));
   const windowMatchDays = matchDays
@@ -547,7 +553,7 @@ export function buildLeaderboardRows(
     .sort((a, b) => b.eventDate.localeCompare(a.eventDate));
 
   const matchdayScores = calculateMatchdayScores(players, windowMatchDays, windowMatches, windowRows);
-  const allHistory = buildMatchScoreHistory(matches, rows);
+  const allHistory = buildMatchScoreHistory(matches, eligibleRows);
   const windowHistory = buildMatchScoreHistory(windowMatches, windowRows);
   const baseRows = players.map((player) => {
     const playerId = player.id || 0;
@@ -598,7 +604,7 @@ export function buildFunAwards(
 ): FunAwardsResult {
   const windowMatches = getMatchWindow(matches, filter);
   const windowMatchIds = new Set(windowMatches.map((m) => m.id));
-  const windowRows = rows.filter((r) => windowMatchIds.has(r.matchId));
+  const windowRows = rows.filter((r) => windowMatchIds.has(r.matchId) && isScoringEligible(r));
   const rowsByPlayer = new Map<number, MatchPlayer[]>();
   const rowsByMatchId = new Map<number, MatchPlayer[]>();
   const matchById = new Map(windowMatches.map((m) => [m.id, m]));
@@ -1073,6 +1079,20 @@ export function getMatchDisplayId(matchId: number | undefined, matchDisplayIds: 
   return matchDisplayIds.get(matchId) || 'Unknown Match';
 }
 
+export function findMatchByDisplayId(matches: Match[], displayId: string) {
+  const target = (displayId || '').trim().toLowerCase();
+  if (!target) return undefined;
+  const sorted = [...matches].sort((a, b) => a.date.localeCompare(b.date) || (a.id || 0) - (b.id || 0));
+  const sequenceByMap = new Map<string, number>();
+  for (const match of sorted) {
+    const mapName = normalizeMapName(match.map).toLowerCase();
+    const sequence = (sequenceByMap.get(mapName) || 0) + 1;
+    sequenceByMap.set(mapName, sequence);
+    if (`${mapName} ${sequence}` === target) return match;
+  }
+  return undefined;
+}
+
 export function getKnifeBoard(players: Player[], knifeEvents: KnifeEvent[], matchDisplayIds: Map<number, string>) {
   const playerNameById = new Map(players.map((p) => [p.id, p.name]));
   const nameOf = (id: number) => playerNameById.get(id) || 'Unknown';
@@ -1097,27 +1117,28 @@ export function getKnifeBoard(players: Player[], knifeEvents: KnifeEvent[], matc
 }
 
 export function getAllTimeRecords(players: Player[], rows: MatchPlayer[], matches: Match[], knifeEvents: KnifeEvent[], matchDisplayIds: Map<number, string>) {
+  const scoreRows = rows.filter(isScoringEligible);
   const playerNameById = new Map(players.map((p) => [p.id, p.name]));
   const rowsByMatchId = new Map<number, MatchPlayer[]>();
   const matchById = new Map(matches.map((m) => [m.id, m]));
-  for (const row of rows) {
+  for (const row of scoreRows) {
     const arr = rowsByMatchId.get(row.matchId) || [];
     arr.push(row);
     rowsByMatchId.set(row.matchId, arr);
   }
-  const bestMatchValueRow = [...rows].sort((a, b) => calculateMatchValue(b, matchById.get(b.matchId), rowsByMatchId.get(b.matchId) || []) - calculateMatchValue(a, matchById.get(a.matchId), rowsByMatchId.get(a.matchId) || []))[0];
-  const mostKillsRow = [...rows].sort((a, b) => safeNumber(b.kills) - safeNumber(a.kills))[0];
-  const mostAssistsRow = [...rows].sort((a, b) => safeNumber(b.assists) - safeNumber(a.assists))[0];
-  const highestDamageRow = [...rows]
+  const bestMatchValueRow = [...scoreRows].sort((a, b) => calculateMatchValue(b, matchById.get(b.matchId), rowsByMatchId.get(b.matchId) || []) - calculateMatchValue(a, matchById.get(a.matchId), rowsByMatchId.get(a.matchId) || []))[0];
+  const mostKillsRow = [...scoreRows].sort((a, b) => safeNumber(b.kills) - safeNumber(a.kills))[0];
+  const mostAssistsRow = [...scoreRows].sort((a, b) => safeNumber(b.assists) - safeNumber(a.assists))[0];
+  const highestDamageRow = [...scoreRows]
     .filter((r) => safeNumber((r as MatchPlayer).damage) > 0)
     .sort((a, b) => safeNumber((b as MatchPlayer).damage) - safeNumber((a as MatchPlayer).damage))[0];
-  const highestUtilityDamageRow = [...rows]
+  const highestUtilityDamageRow = [...scoreRows]
     .filter((r) => safeNumber((r as MatchPlayer).utilityDamage) > 0)
     .sort((a, b) => safeNumber((b as MatchPlayer).utilityDamage) - safeNumber((a as MatchPlayer).utilityDamage))[0];
-  const mostEnemyFlashedRow = [...rows]
+  const mostEnemyFlashedRow = [...scoreRows]
     .filter((r) => safeNumber((r as MatchPlayer).enemyFlashed) > 0)
     .sort((a, b) => safeNumber((b as MatchPlayer).enemyFlashed) - safeNumber((a as MatchPlayer).enemyFlashed))[0];
-  const bestAdrRow = [...rows]
+  const bestAdrRow = [...scoreRows]
     .filter((r) => safeNumber((r as MatchPlayer).damage) > 0)
     .sort((a, b) => {
     const am = matchById.get(a.matchId);
@@ -1126,7 +1147,7 @@ export function getAllTimeRecords(players: Player[], rows: MatchPlayer[], matche
     const br = Math.max(1, safeNumber(bm?.teamAScore) + safeNumber(bm?.teamBScore));
     return (safeNumber((b as MatchPlayer).damage) / br) - (safeNumber((a as MatchPlayer).damage) / ar);
   })[0];
-  const bestKdRow = [...rows]
+  const bestKdRow = [...scoreRows]
     .filter((r) => safeNumber(r.kills) >= 10)
     .sort((a, b) => safeKD(b.kills, b.deaths) - safeKD(a.kills, a.deaths))[0];
   const knifeArtist = players
@@ -1164,20 +1185,21 @@ export function getMatchdayMoments(
   knifeEvents: KnifeEvent[],
   matchDisplayIds: Map<number, string>
 ) {
+  const scoreRows = rows.filter(isScoringEligible);
   const nameOf = (id: number) => players.find((p) => p.id === id)?.name || 'Unknown';
   const rowsByMatchId = new Map<number, MatchPlayer[]>();
   const matchById = new Map(matches.map((m) => [m.id, m]));
-  for (const row of rows) {
+  for (const row of scoreRows) {
     const arr = rowsByMatchId.get(row.matchId) || [];
     arr.push(row);
     rowsByMatchId.set(row.matchId, arr);
   }
-  const recentRows = [...rows].sort((a, b) => (b.id || 0) - (a.id || 0)).slice(0, 12);
+  const recentRows = [...scoreRows].sort((a, b) => (b.id || 0) - (a.id || 0)).slice(0, 12);
   const moments: string[] = [];
   const latestMatch = [...matches].sort((a, b) => b.date.localeCompare(a.date) || (b.id || 0) - (a.id || 0))[0];
   const latestMatchdayId = latestMatch?.matchDayId;
   const latestMatchdayRows = latestMatchdayId
-    ? rows.filter((r) => matchById.get(r.matchId)?.matchDayId === latestMatchdayId)
+    ? scoreRows.filter((r) => matchById.get(r.matchId)?.matchDayId === latestMatchdayId)
     : [];
   const scopedRows = latestMatchdayRows.length ? latestMatchdayRows : recentRows;
 

@@ -190,7 +190,7 @@ const june3Matches: RawMatch[] = [
       { name: 'Jin', team: 'Side A', result: 'WIN', kills: 15, deaths: 21, assists: 3, hsPercent: 26, damage: 2070 },
       { name: 'Bob Marde', team: 'Side A', result: 'WIN', kills: 13, deaths: 19, assists: 8, hsPercent: 46, damage: 1932 },
       { name: 'Voldemort', team: 'Side A', result: 'WIN', kills: 10, deaths: 19, assists: 4, hsPercent: 20, damage: 1173 },
-      { name: 'Mere Baap', team: 'Side A', result: 'WIN', kills: 2, deaths: 3, assists: 1, hsPercent: 50, damage: 230 },
+      { name: 'Mere Baap', team: 'Side A', result: 'WIN', kills: 2, deaths: 3, assists: 1, hsPercent: 50, damage: 230, scoringEligible: false, note: 'Partial-game scoreboard row; excluded from scoring.' },
       { name: 'Mr. DJANGO', team: 'Side B', result: 'LOSS', kills: 35, deaths: 16, assists: 3, hsPercent: 37, damage: 3519 },
       { name: 'Manson', team: 'Side B', result: 'LOSS', kills: 26, deaths: 14, assists: 5, hsPercent: 30, damage: 2438 },
       { name: '!!EDaNgErBoYe!!', team: 'Side B', result: 'LOSS', kills: 16, deaths: 15, assists: 6, hsPercent: 25, damage: 1794 },
@@ -1231,7 +1231,9 @@ async function importJune3DataIfMissing() {
         damage: row.damage ?? undefined,
         hsPercent: row.hsPercent ?? undefined,
         mvps: 0,
-        points: points(row.result, row.kills, row.assists, row.deaths)
+        points: points(row.result, row.kills, row.assists, row.deaths),
+        scoringEligible: row.scoringEligible !== false,
+        participationNote: row.note
       });
     }
     await db.match_players.bulkAdd(rows);
@@ -1257,6 +1259,24 @@ async function importJune3DataIfMissing() {
   }
 
   localStorage.setItem('cs2_imported_june3_match_cards_v1', '1');
+}
+
+async function repairJune3InfernoPartialRowIfNeeded() {
+  const inferno = (await db.matches.where('[date+map]').equals([june3Date, 'Inferno']).toArray())
+    .sort((a, b) => (a.id || 0) - (b.id || 0))[0];
+  const mereBaap = await db.players.where('name').equals('Mere Baap').first();
+  if (!inferno?.id || !mereBaap?.id) return;
+
+  const row = await db.match_players
+    .where('[matchId+playerId]')
+    .equals([inferno.id, mereBaap.id])
+    .first();
+  if (!row?.id) return;
+
+  await db.match_players.update(row.id, {
+    scoringEligible: false,
+    participationNote: 'Partial-game scoreboard row; excluded from scoring.'
+  });
 }
 
 async function importJune11DataIfMissing() {
@@ -1368,6 +1388,7 @@ async function importJune18DataIfMissing() {
 
   const matchIdByMap = new Map<string, number>();
   for (const match of june18Matches) {
+    const roundsPlayed = Math.max(1, match.teamAScore + match.teamBScore);
     const matchId = Number(await db.matches.add({
       seasonId: Number(seasonId),
       matchDayId,
@@ -1398,7 +1419,8 @@ async function importJune18DataIfMissing() {
         kills: row.kills,
         deaths: row.deaths,
         assists: row.assists,
-        damage: row.damage ?? undefined,
+        // The June 18 workbook supplied ADR, while MatchPlayer.damage stores total damage.
+        damage: deriveDamageFromAdr(row.damage, roundsPlayed),
         hsPercent: row.hsPercent ?? undefined,
         utilityDamage: row.utilityDamage ?? undefined,
         enemyFlashed: row.enemyFlashed ?? undefined,
@@ -1431,6 +1453,23 @@ async function importJune18DataIfMissing() {
   }
 
   localStorage.setItem('cs2_imported_june18_match_cards_v1', '1');
+}
+
+async function repairJune18DamageIfNeeded() {
+  const matches = await db.matches.where('date').equals(june18Date).toArray();
+  for (const match of matches) {
+    if (!match.id) continue;
+    const rows = await db.match_players.where('matchId').equals(match.id).toArray();
+    const positiveDamage = rows.map((row) => Number(row.damage || 0)).filter((damage) => damage > 0).sort((a, b) => a - b);
+    if (!positiveDamage.length) continue;
+    const medianDamage = positiveDamage[Math.floor(positiveDamage.length / 2)];
+    if (medianDamage > 300) continue;
+
+    const roundsPlayed = Math.max(1, match.teamAScore + match.teamBScore);
+    await Promise.all(rows.map((row) => row.id && Number(row.damage || 0) > 0
+      ? db.match_players.update(row.id, { damage: Math.round(Number(row.damage) * roundsPlayed) })
+      : Promise.resolve(0)));
+  }
 }
 
 async function importJune24DataIfMissing() {
@@ -1820,7 +1859,9 @@ async function replaceWithImportedData() {
         damage: r.damage ?? undefined,
         hsPercent: r.hsPercent ?? undefined,
         mvps: 0,
-        points: points(r.result, r.kills, r.assists, r.deaths)
+        points: points(r.result, r.kills, r.assists, r.deaths),
+        scoringEligible: r.scoringEligible !== false,
+        participationNote: r.note
       })));
     }
 
@@ -1853,11 +1894,13 @@ export async function seedIfEmpty() {
   }
 
   await importJune3DataIfMissing();
+  await repairJune3InfernoPartialRowIfNeeded();
   await repairJune3Dust2IfNeeded();
   await importJune11DataIfMissing();
   await repairJune11UtilityStatsIfNeeded();
   await repairJune11MirageResultsIfNeeded();
   await importJune18DataIfMissing();
+  await repairJune18DamageIfNeeded();
   await importJune24DataIfMissing();
   await replaceJuly7DataIfNeeded();
   await importJuly22DataIfMissing();

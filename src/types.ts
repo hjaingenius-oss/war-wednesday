@@ -61,6 +61,8 @@ export interface MatchPlayer {
   enemyFlashed?: number;
   mvps: number;
   points: number;
+  scoringEligible?: boolean;
+  participationNote?: string;
 }
 
 export interface KnifeEvent {
