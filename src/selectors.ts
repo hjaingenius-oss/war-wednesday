@@ -406,7 +406,7 @@ export function calculateWeightedAverageMatchdayScore(
 export function calculateFormScore(matchScores: Array<{ score: number; date: string }>) {
   if (!matchScores.length) return 0;
   const latest = [...matchScores].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
-  const weights = [0.8, 0.1, 0.1];
+  const weights = [0.9, 0.07, 0.03];
   return weightedAverage(latest.map((entry, index) => ({
     value: entry.score,
     weight: weights[index] || 0
@@ -471,7 +471,7 @@ export function calculateFormRating(scores: PlayerLeaderboardRow['matchdayScores
   const latest = [...scores].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
   return weightedAverage(latest.map((s, index) => ({
     value: s.score,
-    weight: [0.8, 0.1, 0.1][index] || 0
+    weight: [0.9, 0.07, 0.03][index] || 0
   })));
 }
 
@@ -880,9 +880,9 @@ export function buildFunAwards(
     const candidates = [...playerMap.entries()]
       .map(([playerId, mapRows]) => {
         const mapAppearances = mapRows.length;
-        if (mapAppearances < 1) return null;
+        if (mapAppearances < 4) return null;
         const mapMatchValueAverage = average(mapRows.map((r) => calculateMatchValue(r, matchById.get(r.matchId), mapRows)));
-        const sampleMultiplier = mapAppearances >= 5 ? 1 : mapAppearances === 4 ? 0.95 : mapAppearances === 3 ? 0.9 : mapAppearances === 2 ? 0.85 : 0.8;
+        const sampleMultiplier = mapAppearances >= 5 ? 1 : 0.95;
         const mapDominanceScore = mapMatchValueAverage * sampleMultiplier;
         const wins = mapRows.filter((r) => r.result === 'WIN').length;
         const winPct = mapAppearances ? (wins / mapAppearances) * 100 : 0;

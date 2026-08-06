@@ -36,6 +36,10 @@ function receiptText(players: { id?: number; name: string }[], attackerId: numbe
   return `${playerName(players, attackerId)} knifed ${playerName(players, victimId)}`;
 }
 
+function isMereBaapBobKnife(players: { id?: number; name: string }[], attackerId: number, victimId: number) {
+  return playerName(players, attackerId) === 'Mere Baap' && playerName(players, victimId) === 'Bob Marde';
+}
+
 function Layout({ children }: { children: React.ReactNode }) {
   return <div className="shell"><header><h1>War Wednesday</h1><nav>{['/','/leaderboard','/matches','/players','/stats'].map((p,i)=><NavLink key={p} to={p}>{['Dashboard','Leaderboard','Match History','Players','Records Room'][i]}</NavLink>)}{ADMIN_ENABLED && <NavLink to="/admin">Admin</NavLink>}</nav></header><main>{children}</main></div>;
 }
@@ -81,6 +85,8 @@ function Dashboard() {
   const leagueYear = latestDay?.eventDate.slice(0, 4) || String(new Date().getFullYear());
   const latestDayMatches = latestDay ? matches.filter((m) => m.matchDayId === latestDay.id) : [];
   const name = (id:number)=>playerName(players, id);
+  const featuredKnife = knifeEvents.slice().reverse().find((e) => isMereBaapBobKnife(players, e.attackerPlayerId, e.victimPlayerId))
+    || knifeEvents.slice().reverse().find((e) => playerName(players, e.attackerPlayerId) === 'Mere Baap');
   return <>
     <section className="showcase">
       <div className="showcase-main">
@@ -97,8 +103,15 @@ function Dashboard() {
       </div>
       <aside className="receipts-board">
       <div className="receipts-head"><span>Knife Board</span><strong>{knifeEvents.length}</strong></div>
+      {featuredKnife && (
+        <article className="knife-spotlight">
+          <p className="knife-spotlight-kicker">Featured knife receipt</p>
+          <h3>{receiptText(players, featuredKnife.attackerPlayerId, featuredKnife.victimPlayerId)}</h3>
+          <p>Mere Baap landed the cleanest banter knife on Bob Marde.</p>
+        </article>
+      )}
       <div className="receipt-stack">
-        {knifeEvents.slice().reverse().slice(0, 3).map((e, i)=><div className="receipt-card" key={e.id}><span>#{i + 1}</span><b>{receiptText(players, e.attackerPlayerId, e.victimPlayerId)}</b></div>)}
+        {knifeEvents.slice().reverse().slice(0, 3).map((e, i)=><div className={`receipt-card${isMereBaapBobKnife(players, e.attackerPlayerId, e.victimPlayerId) ? ' featured' : ''}`} key={e.id}><span>#{i + 1}</span><b>{receiptText(players, e.attackerPlayerId, e.victimPlayerId)}</b>{isMereBaapBobKnife(players, e.attackerPlayerId, e.victimPlayerId) && <small>Headline knife of the night</small>}</div>)}
       </div>
     </aside>
   </section>
@@ -241,7 +254,7 @@ function StatsPage() {
       </div>
     </section>
     <section className="grid2">
-      <div className="card"><h3>Knife Board</h3><div className="row"><span>Knife Artist</span><span>{allTime.knifeArtist?.name || '-'} ({allTime.knifeArtist?.count || 0})</span></div><div className="row"><span>Knife Victim</span><span>{allTime.knifeVictim?.name || '-'} ({allTime.knifeVictim?.count || 0})</span></div><div className="row"><span>Biggest Knife Rivalry</span><span>{knifeBoard.rivalryText || '-'}</span></div><div className="row"><span>Latest Knife Moment</span><span>{knifeBoard.latestText || '-'}</span></div></div>
+      <div className="card"><h3>Knife Board</h3>{knifeBoard.latestText && <div className="knife-spotlight inline"><p className="knife-spotlight-kicker">Featured knife receipt</p><h4>{knifeBoard.latestText}</h4><p>{knifeBoard.latestText.includes('Mere Baap') && knifeBoard.latestText.includes('Bob Marde') ? 'Mere Baap tagged Bob Marde in a proper hallway check.' : 'Latest knife moment from the current records.'}</p></div>}<div className="row"><span>Knife Artist</span><span>{allTime.knifeArtist?.name || '-'} ({allTime.knifeArtist?.count || 0})</span></div><div className="row"><span>Knife Victim</span><span>{allTime.knifeVictim?.name || '-'} ({allTime.knifeVictim?.count || 0})</span></div><div className="row"><span>Biggest Knife Rivalry</span><span>{knifeBoard.rivalryText || '-'}</span></div><div className="row"><span>Latest Knife Moment</span><span>{knifeBoard.latestText || '-'}</span></div></div>
       <div className="card"><h3>Matchday Moments</h3><p className="muted">{latestMatchday ? `${latestMatchday.title} (${latestMatchday.eventDate})` : 'Latest available matchday'}</p>{moments.length === 0 ? <p className="muted">No moments yet.</p> : moments.map((line, i) => <div className="row" key={i}><span>{line}</span></div>)}</div>
     </section>
   </div>;
@@ -310,7 +323,7 @@ function PlayerProfile() {
   <p>10+ Kill Games {games10} | 20+ Kill Games {games20} | 30+ Kill Games {games30}</p>
   {profile?.comparisonBadge && <p><span className="comparison-badge">{profile.comparisonBadge}</span></p>}
   <h3>Performance by Game</h3><p className="muted">Each point is one game, ordered from oldest to newest.</p><div className="chart"><ResponsiveContainer width="100%" height={240}><LineChart data={trend}><XAxis dataKey="match" interval={0} angle={-25} textAnchor="end" height={60} tickMargin={12}/><YAxis/><Tooltip/><Line type="monotone" dataKey="score" stroke="#b8ff2c" dot={false}/></LineChart></ResponsiveContainer></div>
-  <h3>Knife History</h3>{knifeHistory.map((e)=><div key={e.id} className="row"><span>Match ID: {getMatchDisplayId(e.matchId, matchDisplayIds)}</span><span>{receiptText(players, e.attackerPlayerId, e.victimPlayerId)}</span></div>)}
+  <h3>Knife History</h3>{knifeHistory.map((e)=><div key={e.id} className={`row${isMereBaapBobKnife(players, e.attackerPlayerId, e.victimPlayerId) ? ' featured-row' : ''}`}><span>Match ID: {getMatchDisplayId(e.matchId, matchDisplayIds)}</span><span>{receiptText(players, e.attackerPlayerId, e.victimPlayerId)}{isMereBaapBobKnife(players, e.attackerPlayerId, e.victimPlayerId) ? ' - featured receipt' : ''}</span></div>)}
   <h3>Recent Matches</h3>{pr.slice(-5).reverse().map((r)=><div key={r.id} className="row"><span>{matches.find((m)=>m.id===r.matchId)?.date}</span><span>Match ID: {getMatchDisplayId(r.matchId, matchDisplayIds)}</span><span>{fmt(calculateTotalPointsForMatch(r))} Total Points</span></div>)}
   </div>;
 }

@@ -1070,19 +1070,76 @@ async function importAug5DataIfMissing() {
       });
     }
     await db.match_players.bulkAdd(rows);
+  }
 
-    if (match.map === 'Inferno') {
-      const djangoId = await getOrCreatePlayerId('Mr. DJANGO');
-      await db.knife_events.add({
-        matchId,
-        attackerPlayerId: djangoId,
-        victimPlayerId: 0,
-        createdAt: now()
-      });
-    }
+  const infernoMatch = await db.matches.where('[date+map]').equals([aug5Date, 'Inferno']).first();
+  if (infernoMatch?.id) {
+    const djangoId = await getOrCreatePlayerId('Mr. DJANGO');
+    const bobId = await getOrCreatePlayerId('Bob Marde');
+    await db.knife_events.add({
+      matchId: infernoMatch.id,
+      attackerPlayerId: djangoId,
+      victimPlayerId: 0,
+      createdAt: now()
+    });
+    await db.knife_events.add({
+      matchId: infernoMatch.id,
+      attackerPlayerId: djangoId,
+      victimPlayerId: 0,
+      createdAt: now()
+    });
+    await db.knife_events.add({
+      matchId: infernoMatch.id,
+      attackerPlayerId: djangoId,
+      victimPlayerId: 0,
+      createdAt: now()
+    });
+    await db.knife_events.add({
+      matchId: infernoMatch.id,
+      attackerPlayerId: await getOrCreatePlayerId('Mere Baap'),
+      victimPlayerId: bobId,
+      createdAt: now()
+    });
   }
 
   localStorage.setItem('cs2_imported_aug5_match_cards_v1', '1');
+}
+
+async function repairAug5KnifeStatsIfNeeded() {
+  const matches = await db.matches.where('date').equals(aug5Date).toArray();
+  if (!matches.length) return;
+
+  const infernoMatch = matches.find((m) => m.map === 'Inferno');
+  if (!infernoMatch?.id) return;
+
+  const players = await db.players.toArray();
+  const playerIdByName = new Map(players.map((p) => [p.name, p.id || 0]));
+  const djangoId = playerIdByName.get('Mr. DJANGO') || 0;
+  const mereBaapId = playerIdByName.get('Mere Baap') || 0;
+  const bobId = playerIdByName.get('Bob Marde') || 0;
+  if (!djangoId || !mereBaapId) return;
+
+  const existing = await db.knife_events.where('matchId').equals(infernoMatch.id).toArray();
+  const djangoCount = existing.filter((ev) => ev.attackerPlayerId === djangoId).length;
+  const mereBaapCount = existing.filter((ev) => ev.attackerPlayerId === mereBaapId).length;
+
+  for (let i = djangoCount; i < 3; i++) {
+    await db.knife_events.add({
+      matchId: infernoMatch.id,
+      attackerPlayerId: djangoId,
+      victimPlayerId: 0,
+      createdAt: now()
+    });
+  }
+
+  if (mereBaapCount < 1) {
+    await db.knife_events.add({
+      matchId: infernoMatch.id,
+      attackerPlayerId: mereBaapId,
+      victimPlayerId: bobId || 0,
+      createdAt: now()
+    });
+  }
 }
 
 function norm(s: string) {
@@ -1806,6 +1863,7 @@ export async function seedIfEmpty() {
   await importJuly22DataIfMissing();
   await repairJuly22DataIfNeeded();
   await importAug5DataIfMissing();
+  await repairAug5KnifeStatsIfNeeded();
   await repairJune24Dust2IfNeeded();
   await mergeAmanAliasIfNeeded();
 }
