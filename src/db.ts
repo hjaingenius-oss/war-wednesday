@@ -52,6 +52,8 @@ export const db = new LeagueDb();
 const now = () => new Date().toISOString();
 const rp = (r: MatchResult) => (r === 'WIN' ? 5 : r === 'DRAW' ? 3 : 1);
 const points = (r: MatchResult, k: number, a: number, d: number) => rp(r) + k + a * 0.5 - d * 0.5;
+const deriveDamageFromAdr = (adr: number | null | undefined, roundsPlayed: number) =>
+  adr == null || !Number.isFinite(adr) ? undefined : Math.round(adr * Math.max(1, roundsPlayed));
 
 type RawPlayerRow = {
   name: string;
@@ -62,9 +64,16 @@ type RawPlayerRow = {
   assists: number;
   hsPercent?: number | null;
   damage?: number | null;
+  kd?: number | null;
+  adr?: number | null;
   utilityDamage?: number | null;
   enemyFlashed?: number | null;
   mvps?: number | null;
+  score?: number | null;
+  displayName?: string;
+  note?: string;
+  gapFill?: boolean;
+  scoringEligible?: boolean;
 };
 
 type RawMatch = {
@@ -76,6 +85,7 @@ type RawMatch = {
   winningTeam: string;
   teamAName?: string;
   teamBName?: string;
+  note?: string;
   rows: RawPlayerRow[];
 };
 
@@ -753,6 +763,116 @@ const july22Matches: RawMatch[] = [
   }
 ];
 
+const aug5Date = '2026-08-05';
+const aug5MatchDayTitle = 'Matchday - Aug 5, 2026';
+const aug5Matches: RawMatch[] = [
+  {
+    date: aug5Date,
+    matchDayTitle: aug5MatchDayTitle,
+    map: 'Inferno',
+    teamAScore: 5,
+    teamBScore: 13,
+    teamAName: 'Counter-Terrorists',
+    teamBName: 'Terrorists',
+    winningTeam: 'Terrorists',
+    note: 'DT was not visible in this match and has not been included.',
+    rows: [
+      { name: 'DrKush', team: 'Counter-Terrorists', result: 'LOSS', kills: 18, deaths: 16, assists: 3, mvps: 0, score: 60, hsPercent: 33, kd: 1.12, adr: 97, utilityDamage: 3, enemyFlashed: 5 },
+      { name: 'Dangerboy', displayName: '!!@DaNgErBoY@!!', team: 'Counter-Terrorists', result: 'LOSS', kills: 16, deaths: 17, assists: 3, mvps: 1, score: 51, hsPercent: 43, kd: 0.94, adr: 98, utilityDamage: 41, enemyFlashed: 0 },
+      { name: 'Radha', team: 'Counter-Terrorists', result: 'LOSS', kills: 10, deaths: 18, assists: 3, mvps: 1, score: 39, hsPercent: 20, kd: 0.55, adr: 59, utilityDamage: 0, enemyFlashed: 1 },
+      { name: 'Aks', displayName: 'Stormbre@ker', team: 'Counter-Terrorists', result: 'LOSS', kills: 9, deaths: 17, assists: 4, mvps: 1, score: 39, hsPercent: 11, kd: 0.52, adr: 61, utilityDamage: 24, enemyFlashed: 2 },
+      { name: 'Aman', team: 'Counter-Terrorists', result: 'LOSS', kills: 9, deaths: 17, assists: 4, mvps: 0, score: 37, hsPercent: 22, kd: 0.52, adr: 70, utilityDamage: 0, enemyFlashed: 2 },
+      { name: 'PeekaBoom', team: 'Counter-Terrorists', result: 'LOSS', kills: 6, deaths: 17, assists: 4, mvps: 1, score: 32, hsPercent: 33, kd: 0.35, adr: 55, utilityDamage: 2, enemyFlashed: 0 },
+      { name: 'Mere Baap', team: 'Counter-Terrorists', result: 'LOSS', kills: 4, deaths: 17, assists: 4, mvps: 0, score: 24, hsPercent: 0, kd: 0.23, adr: 28, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Django', displayName: 'Mr. DJANGO', team: 'Terrorists', result: 'WIN', kills: 32, deaths: 12, assists: 4, mvps: 5, score: 85, hsPercent: 50, kd: 2.66, adr: 169, utilityDamage: 0, enemyFlashed: 1 },
+      { name: 'GULLU', team: 'Terrorists', result: 'WIN', kills: 23, deaths: 12, assists: 2, mvps: 1, score: 64, hsPercent: 4, kd: 1.91, adr: 109, utilityDamage: 108, enemyFlashed: 4 },
+      { name: 'MAVERICK', team: 'Terrorists', result: 'WIN', kills: 18, deaths: 11, assists: 5, mvps: 1, score: 55, hsPercent: 27, kd: 1.63, adr: 115, utilityDamage: 253, enemyFlashed: 0 },
+      { name: 'Bob Marde', team: 'Terrorists', result: 'WIN', kills: 13, deaths: 12, assists: 11, mvps: 1, score: 55, hsPercent: 15, kd: 1.08, adr: 90, utilityDamage: 247, enemyFlashed: 17 },
+      { name: 'T-Rex', team: 'Terrorists', result: 'WIN', kills: 14, deaths: 16, assists: 8, mvps: 0, score: 53, hsPercent: 35, kd: 0.87, adr: 91, utilityDamage: 70, enemyFlashed: 1 },
+      { name: 'Voldemort', team: 'Terrorists', result: 'WIN', kills: 15, deaths: 10, assists: 3, mvps: 1, score: 52, hsPercent: 66, kd: 1.50, adr: 80, utilityDamage: 29, enemyFlashed: 0 }
+    ]
+  },
+  {
+    date: aug5Date,
+    matchDayTitle: aug5MatchDayTitle,
+    map: 'Dust II',
+    teamAScore: 13,
+    teamBScore: 6,
+    teamAName: 'Counter-Terrorists',
+    teamBName: 'Terrorists',
+    winningTeam: 'Counter-Terrorists',
+    note: 'DT row ignored as requested.',
+    rows: [
+      { name: 'Django', displayName: 'Mr. DJANGO', team: 'Counter-Terrorists', result: 'WIN', kills: 30, deaths: 9, assists: 3, mvps: 1, score: 90, hsPercent: 56, kd: 3.33, adr: 145, utilityDamage: 0, enemyFlashed: 6 },
+      { name: 'Bob Marde', team: 'Counter-Terrorists', result: 'WIN', kills: 17, deaths: 14, assists: 6, mvps: 1, score: 67, hsPercent: 47, kd: 1.21, adr: 94, utilityDamage: 234, enemyFlashed: 14 },
+      { name: 'GULLU', team: 'Counter-Terrorists', result: 'WIN', kills: 21, deaths: 10, assists: 4, mvps: 1, score: 63, hsPercent: 14, kd: 2.10, adr: 88, utilityDamage: 50, enemyFlashed: 9 },
+      { name: 'Voldemort', team: 'Counter-Terrorists', result: 'WIN', kills: 12, deaths: 15, assists: 7, mvps: 1, score: 46, hsPercent: 50, kd: 0.80, adr: 73, utilityDamage: 16, enemyFlashed: 2 },
+      { name: 'MAVERICK', team: 'Counter-Terrorists', result: 'WIN', kills: 13, deaths: 14, assists: 6, mvps: 1, score: 42, hsPercent: 46, kd: 0.92, adr: 81, utilityDamage: 69, enemyFlashed: 12 },
+      { name: 'T-Rex', team: 'Counter-Terrorists', result: 'WIN', kills: 7, deaths: 16, assists: 8, mvps: 0, score: 32, hsPercent: 0, kd: 0.43, adr: 62, utilityDamage: 87, enemyFlashed: 1 },
+      { name: 'Radha', team: 'Terrorists', result: 'LOSS', kills: 15, deaths: 18, assists: 6, mvps: 1, score: 49, hsPercent: 53, kd: 0.83, adr: 92, utilityDamage: 80, enemyFlashed: 1 },
+      { name: 'DrKush', team: 'Terrorists', result: 'LOSS', kills: 13, deaths: 17, assists: 6, mvps: 0, score: 45, hsPercent: 61, kd: 0.76, adr: 82, utilityDamage: 97, enemyFlashed: 5 },
+      { name: 'Dangerboy', displayName: '!!@DaNgErBoY@!!', team: 'Terrorists', result: 'LOSS', kills: 13, deaths: 13, assists: 1, mvps: 1, score: 43, hsPercent: 38, kd: 1.00, adr: 67, utilityDamage: 0, enemyFlashed: 2 },
+      { name: 'Aman', team: 'Terrorists', result: 'LOSS', kills: 12, deaths: 16, assists: 3, mvps: 0, score: 39, hsPercent: 25, kd: 0.75, adr: 73, utilityDamage: 0, enemyFlashed: 2 },
+      { name: 'Mere Baap', team: 'Terrorists', result: 'LOSS', kills: 11, deaths: 16, assists: 3, mvps: 1, score: 37, hsPercent: 36, kd: 0.73, adr: 61, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'PeekaBoom', team: 'Terrorists', result: 'LOSS', kills: 10, deaths: 15, assists: 1, mvps: 1, score: 33, hsPercent: 20, kd: 0.66, adr: 53, utilityDamage: 11, enemyFlashed: 0 },
+      { name: 'Aks', displayName: 'Stormbre@ker', team: 'Terrorists', result: 'LOSS', kills: 8, deaths: 16, assists: 1, mvps: 0, score: 32, hsPercent: 25, kd: 0.50, adr: 54, utilityDamage: 0, enemyFlashed: 7 }
+    ]
+  },
+  {
+    date: aug5Date,
+    matchDayTitle: aug5MatchDayTitle,
+    map: 'Ancient',
+    teamAScore: 5,
+    teamBScore: 13,
+    teamAName: 'Counter-Terrorists',
+    teamBName: 'Terrorists',
+    winningTeam: 'Terrorists',
+    note: 'Aman logged out unfairly; his stats were set to the lowest scoring player in this match.',
+    rows: [
+      { name: 'GULLU', team: 'Counter-Terrorists', result: 'LOSS', kills: 23, deaths: 16, assists: 2, mvps: 1, score: 59, hsPercent: null, kd: 1.44, adr: null, utilityDamage: null, enemyFlashed: null, note: 'Advanced stats not visible in final Ancient stats image; KDA/MVP/score taken from previous Ancient image.' },
+      { name: 'Voldemort', team: 'Counter-Terrorists', result: 'LOSS', kills: 14, deaths: 17, assists: 4, mvps: 1, score: 53, hsPercent: 35, kd: 0.82, adr: 88, utilityDamage: 14, enemyFlashed: 0 },
+      { name: 'MAVERICK', team: 'Counter-Terrorists', result: 'LOSS', kills: 13, deaths: 16, assists: 6, mvps: 0, score: 53, hsPercent: 38, kd: 0.81, adr: 80, utilityDamage: 41, enemyFlashed: 1 },
+      { name: 'DT', team: 'Counter-Terrorists', result: 'LOSS', kills: 9, deaths: 16, assists: 9, mvps: 0, score: 43, hsPercent: 11, kd: 0.56, adr: 65, utilityDamage: 35, enemyFlashed: 1 },
+      { name: 'T-Rex', team: 'Counter-Terrorists', result: 'LOSS', kills: 10, deaths: 18, assists: 6, mvps: 0, score: 38, hsPercent: 40, kd: 0.55, adr: 68, utilityDamage: 141, enemyFlashed: 1 },
+      { name: 'Bob Marde', team: 'Counter-Terrorists', result: 'LOSS', kills: 7, deaths: 16, assists: 6, mvps: 0, score: 33, hsPercent: 14, kd: 0.43, adr: 58, utilityDamage: 144, enemyFlashed: 6 },
+      { name: 'Django', displayName: 'Mr. DJANGO', team: 'Terrorists', result: 'WIN', kills: 28, deaths: 11, assists: 2, mvps: 1, score: 77, hsPercent: 46, kd: 2.54, adr: 144, utilityDamage: 18, enemyFlashed: 1 },
+      { name: 'DrKush', team: 'Terrorists', result: 'WIN', kills: 19, deaths: 14, assists: 11, mvps: 1, score: 72, hsPercent: 68, kd: 1.35, adr: 138, utilityDamage: 146, enemyFlashed: 6 },
+      { name: 'Mere Baap', team: 'Terrorists', result: 'WIN', kills: 14, deaths: 12, assists: 2, mvps: 1, score: 47, hsPercent: 28, kd: 1.16, adr: 83, utilityDamage: 23, enemyFlashed: 0 },
+      { name: 'PeekaBoom', team: 'Terrorists', result: 'WIN', kills: 14, deaths: 12, assists: 3, mvps: 1, score: 46, hsPercent: 50, kd: 1.16, adr: 83, utilityDamage: 91, enemyFlashed: 0 },
+      { name: 'Dangerboy', displayName: '!!@DaNgErBoY@!!', team: 'Terrorists', result: 'WIN', kills: 12, deaths: 11, assists: 5, mvps: 1, score: 45, hsPercent: 33, kd: 1.09, adr: 66, utilityDamage: 32, enemyFlashed: 8 },
+      { name: 'Aks', displayName: 'Stormbre@ker', team: 'Terrorists', result: 'WIN', kills: 12, deaths: 15, assists: 5, mvps: 0, score: 44, hsPercent: 16, kd: 0.80, adr: 73, utilityDamage: 26, enemyFlashed: 10 },
+      { name: 'Aman', team: 'Counter-Terrorists', result: 'LOSS', kills: 10, deaths: 18, assists: 6, mvps: 0, score: 38, hsPercent: 40, kd: 0.55, adr: 68, utilityDamage: 141, enemyFlashed: 1 }
+    ]
+  },
+  {
+    date: aug5Date,
+    matchDayTitle: aug5MatchDayTitle,
+    map: 'Mirage',
+    teamAScore: 13,
+    teamBScore: 10,
+    teamAName: 'Counter-Terrorists',
+    teamBName: 'Terrorists',
+    winningTeam: 'Counter-Terrorists',
+    note: 'Team/result checked after the team change: Counter-Terrorists won 13-10.',
+    rows: [
+      { name: 'Dangerboy', displayName: '!!@DaNgErBoY@!!', team: 'Counter-Terrorists', result: 'WIN', kills: 28, deaths: 17, assists: 6, mvps: 1, score: 84, hsPercent: 32, kd: 1.64, adr: 124, utilityDamage: 51, enemyFlashed: 6 },
+      { name: 'Django', displayName: 'Mr. DJANGO', team: 'Counter-Terrorists', result: 'WIN', kills: 27, deaths: 14, assists: 5, mvps: 1, score: 81, hsPercent: 55, kd: 1.92, adr: 120, utilityDamage: 15, enemyFlashed: 6 },
+      { name: 'DrKush', team: 'Counter-Terrorists', result: 'WIN', kills: 24, deaths: 19, assists: 4, mvps: 1, score: 77, hsPercent: 29, kd: 1.26, adr: 112, utilityDamage: 114, enemyFlashed: 5 },
+      { name: 'Aks', displayName: 'Stormbre@ker', team: 'Counter-Terrorists', result: 'WIN', kills: 14, deaths: 19, assists: 7, mvps: 0, score: 53, hsPercent: 50, kd: 0.73, adr: 69, utilityDamage: 0, enemyFlashed: 12 },
+      { name: 'Radha', team: 'Counter-Terrorists', result: 'WIN', kills: 17, deaths: 18, assists: 3, mvps: 1, score: 50, hsPercent: 17, kd: 0.94, adr: 73, utilityDamage: 0, enemyFlashed: 8 },
+      { name: 'PeekaBoom', team: 'Counter-Terrorists', result: 'WIN', kills: 13, deaths: 18, assists: 6, mvps: 1, score: 50, hsPercent: 30, kd: 0.72, adr: 65, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'Mere Baap', team: 'Counter-Terrorists', result: 'WIN', kills: 13, deaths: 17, assists: 3, mvps: 1, score: 47, hsPercent: 46, kd: 0.76, adr: 52, utilityDamage: 0, enemyFlashed: 0 },
+      { name: 'MAVERICK', team: 'Terrorists', result: 'LOSS', kills: 25, deaths: 19, assists: 8, mvps: 1, score: 77, hsPercent: 44, kd: 1.31, adr: 108, utilityDamage: 1, enemyFlashed: 0 },
+      { name: 'GULLU', team: 'Terrorists', result: 'LOSS', kills: 28, deaths: 18, assists: 3, mvps: 1, score: 76, hsPercent: 35, kd: 1.55, adr: 113, utilityDamage: 83, enemyFlashed: 1 },
+      { name: 'DT', team: 'Terrorists', result: 'LOSS', kills: 23, deaths: 22, assists: 4, mvps: 0, score: 72, hsPercent: 30, kd: 1.04, adr: 117, utilityDamage: 29, enemyFlashed: 0 },
+      { name: 'Voldemort', team: 'Terrorists', result: 'LOSS', kills: 17, deaths: 18, assists: 2, mvps: 1, score: 60, hsPercent: 27, kd: 0.94, adr: 75, utilityDamage: 96, enemyFlashed: 1 },
+      { name: 'Aman', team: 'Terrorists', result: 'LOSS', kills: 10, deaths: 20, assists: 6, mvps: 1, score: 45, hsPercent: 30, kd: 0.50, adr: 64, utilityDamage: 50, enemyFlashed: 1 },
+      { name: 'Bob Marde', team: 'Terrorists', result: 'LOSS', kills: 9, deaths: 19, assists: 5, mvps: 0, score: 42, hsPercent: 11, kd: 0.47, adr: 53, utilityDamage: 180, enemyFlashed: 9 },
+      { name: 'T-Rex', team: 'Terrorists', result: 'LOSS', kills: 10, deaths: 23, assists: 6, mvps: 0, score: 40, hsPercent: 60, kd: 0.43, adr: 66, utilityDamage: 9, enemyFlashed: 0 }
+    ]
+  }
+];
+
 async function repairJuly22DataIfNeeded() {
   const july22Matches = await db.matches.where('date').equals(july22Date).toArray();
   if (!july22Matches.length) return;
@@ -888,6 +1008,83 @@ async function importJuly22DataIfMissing() {
   localStorage.setItem('cs2_imported_july22_match_cards_v1', '1');
 }
 
+async function importAug5DataIfMissing() {
+  const flag = localStorage.getItem('cs2_imported_aug5_match_cards_v1');
+  const hasAug5 = await db.matches.where('date').equals(aug5Date).count();
+  if (flag === '1' || hasAug5 > 0) {
+    localStorage.setItem('cs2_imported_aug5_match_cards_v1', '1');
+    return;
+  }
+
+  const season = await db.seasons.filter((s) => s.isCurrent).first() || await db.seasons.orderBy('id').last();
+  let seasonId = season?.id;
+  if (!seasonId) {
+    seasonId = Number(await db.seasons.add({ name: 'Season 1', isCurrent: true, archived: false, createdAt: now() }));
+  }
+
+  const matchDayId = Number(await db.match_days.add({
+    seasonId: Number(seasonId),
+    title: aug5MatchDayTitle,
+    eventDate: aug5Date,
+    notes: 'Imported from August 5 screenshots',
+    createdAt: now()
+  }));
+
+  for (const match of aug5Matches) {
+    const matchId = Number(await db.matches.add({
+      seasonId: Number(seasonId),
+      matchDayId,
+      date: match.date,
+      map: match.map,
+      teamAName: match.teamAName || 'Side A',
+      teamBName: match.teamBName || 'Side B',
+      teamAScore: match.teamAScore,
+      teamBScore: match.teamBScore,
+      winningTeam: match.winningTeam,
+      notes: match.note || 'Imported from August 5 screenshots',
+      createdAt: now()
+    }));
+
+    const roundsPlayed = Math.max(1, match.teamAScore + match.teamBScore);
+    const rows = [];
+    for (const row of match.rows) {
+      const canonicalName = canonicalImportName(row.name);
+      const playerId = await getOrCreatePlayerId(canonicalName);
+      if (canonicalName !== row.name) {
+        await addAliasIfMissing(playerId, row.name);
+      }
+      rows.push({
+        matchId,
+        playerId,
+        team: row.team,
+        result: row.result,
+        kills: row.kills,
+        deaths: row.deaths,
+        assists: row.assists,
+        damage: row.damage ?? deriveDamageFromAdr(row.adr, roundsPlayed),
+        hsPercent: row.hsPercent ?? undefined,
+        utilityDamage: row.utilityDamage ?? undefined,
+        enemyFlashed: row.enemyFlashed ?? undefined,
+        mvps: row.mvps ?? 0,
+        points: points(row.result, row.kills, row.assists, row.deaths)
+      });
+    }
+    await db.match_players.bulkAdd(rows);
+
+    if (match.map === 'Inferno') {
+      const djangoId = await getOrCreatePlayerId('Mr. DJANGO');
+      await db.knife_events.add({
+        matchId,
+        attackerPlayerId: djangoId,
+        victimPlayerId: 0,
+        createdAt: now()
+      });
+    }
+  }
+
+  localStorage.setItem('cs2_imported_aug5_match_cards_v1', '1');
+}
+
 function norm(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -903,10 +1100,10 @@ function canonicalImportName(name: string) {
   if (normalized === norm('Aks')) return 'aks289';
   if (normalized === norm('amansanghvi1') || normalized === norm('amansanghv1')) return 'Aman';
   if (normalized === norm('Django') || normalized === norm('Mr. DJANGO')) return 'Mr. DJANGO';
+  if (normalized === norm('Dangerboy') || normalized === norm('!!@DaNgErBoY@!!')) return '!!EDaNgErBoYe!!';
   if (normalized === norm('Gullu') || normalized === norm('GULLU')) return 'GULLU';
   if (normalized === norm('Mr Robot') || normalized === norm('Mr.Robot')) return 'Mr.Robot';
   if (normalized === norm('Dr Kush') || normalized === norm('DrKush')) return 'DrKush';
-  if (normalized === norm('!!@DaNgErBoY@!!')) return '!!EDaNgErBoYe!!';
   return name;
 }
 
@@ -1608,6 +1805,7 @@ export async function seedIfEmpty() {
   await replaceJuly7DataIfNeeded();
   await importJuly22DataIfMissing();
   await repairJuly22DataIfNeeded();
+  await importAug5DataIfMissing();
   await repairJune24Dust2IfNeeded();
   await mergeAmanAliasIfNeeded();
 }

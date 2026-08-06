@@ -1075,6 +1075,7 @@ export function getMatchDisplayId(matchId: number | undefined, matchDisplayIds: 
 
 export function getKnifeBoard(players: Player[], knifeEvents: KnifeEvent[], matchDisplayIds: Map<number, string>) {
   const playerNameById = new Map(players.map((p) => [p.id, p.name]));
+  const nameOf = (id: number) => playerNameById.get(id) || 'Unknown';
   const attackerVictim = new Map<string, { attackerId: number; victimId: number; count: number }>();
   for (const event of knifeEvents) {
     const key = `${event.attackerPlayerId}-${event.victimPlayerId}`;
@@ -1088,8 +1089,8 @@ export function getKnifeBoard(players: Player[], knifeEvents: KnifeEvent[], matc
   const rivalry = [...attackerVictim.values()].sort((a, b) => b.count - a.count)[0];
   const latestEvent = [...knifeEvents].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
   return {
-    rivalryText: rivalry ? `${playerNameById.get(rivalry.attackerId)} has knifed ${playerNameById.get(rivalry.victimId)} ${rivalry.count} times.` : '',
-    latestText: latestEvent ? `${playerNameById.get(latestEvent.attackerPlayerId)} knifed ${playerNameById.get(latestEvent.victimPlayerId)} in ${getMatchDisplayId(latestEvent.matchId, matchDisplayIds)}.` : '',
+    rivalryText: rivalry ? `${nameOf(rivalry.attackerId)} has knifed ${nameOf(rivalry.victimId)} ${rivalry.count} times.` : '',
+    latestText: latestEvent ? `${nameOf(latestEvent.attackerPlayerId)} knifed ${nameOf(latestEvent.victimPlayerId)} in ${getMatchDisplayId(latestEvent.matchId, matchDisplayIds)}.` : '',
     rivalry,
     latestEvent
   };
