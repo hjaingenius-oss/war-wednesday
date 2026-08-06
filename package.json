@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run audit:data && tsc -b && vite build",
+    "audit:data": "node scripts/audit-league-data.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
