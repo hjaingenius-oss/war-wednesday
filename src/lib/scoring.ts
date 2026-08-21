@@ -54,8 +54,7 @@ export function deriveAdr(damage: number, rounds: number) {
   const safeDamage = safeNumber(damage);
   const safeRounds = Math.max(1, safeNumber(rounds));
   if (safeDamage <= 0) return 0;
-  if (safeDamage > 300) return safeDamage / safeRounds;
-  return safeDamage;
+  return safeDamage / safeRounds;
 }
 
 export function weightedAverage(values: Array<{ value: number; weight: number }>) {

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run audit:data && tsc -b && vite build",
-    "audit:data": "node scripts/audit-league-data.mjs",
+    "audit:data": "node scripts/audit-league-data.mjs && node scripts/audit-august-data.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

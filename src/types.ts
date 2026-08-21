@@ -62,6 +62,8 @@ export interface MatchPlayer {
   mvps: number;
   points: number;
   scoringEligible?: boolean;
+  scoreOverride?: number;
+  pointsOverride?: number;
   participationNote?: string;
   gapFill?: boolean;
 }

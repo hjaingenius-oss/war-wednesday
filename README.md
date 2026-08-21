@@ -35,3 +35,12 @@ Install Command: npm install
 ## Updating Data
 
 Edit the seeded data in `src/db.ts`, bump the local import flag version in `seedIfEmpty`, run `npm.cmd run build`, then redeploy.
+
+## Permanent Matchday Data Rules
+
+- If a player appears in earlier games on a matchday but is absent from a later/final scoreboard, treat that as a logout penalty unless the user explicitly says otherwise.
+- Never remove a logout row. It counts as a game, attendance, and the supplied result.
+- When the supplied penalty is zero, store exactly 0 Score and 0 Total Points. Do not recalculate a positive score from the empty stat line.
+- A logout penalty row must not affect the lobby averages used to score players who completed the game.
+- If the user supplies invented or average-filled penalty statistics, include them in scoring exactly as directed and mark the row as gap-filled.
+- Only exclude a partial/missing player when the user explicitly says they joined midway, did not play, or should be removed.

@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type { KnifeEvent, Match, MatchDay, MatchPlayer, MatchResult, Player, PlayerAlias, Season } from './types';
+import { importedMatches as august2026DataPack } from './data/august-2026-matchdays';
 
 export class LeagueDb extends Dexie {
   players!: Table<Player, number>;
@@ -1208,6 +1209,162 @@ function canonicalImportName(name: string) {
   return name;
 }
 
+const august10Date = '2026-08-10';
+const august19Date = '2026-08-19';
+const august10MatchDayTitle = 'War Wednesday - Aug 10, 2026';
+const august19MatchDayTitle = 'War Wednesday - Aug 19, 2026';
+const augustKnifeEvents = [
+  { attacker: 'Manson', victim: 'Daa' },
+  { attacker: 'Manson', victim: 'Aman' },
+  { attacker: 'Manson', victim: 'Bob Marde' },
+  { attacker: 'Manson', victim: 'GULLU' },
+  { attacker: 'Manson', victim: 'DrKush' },
+  { attacker: 'VPS', victim: 'Daa' }
+];
+
+function isMissingAugustPackRow(row: (typeof august2026DataPack)[number]['rows'][number]) {
+  return row.team === 'Not Played / Missing';
+}
+
+function hasUnseenAdvancedStats(row: (typeof august2026DataPack)[number]['rows'][number]) {
+  const reason = row.gapFillReason?.toLowerCase() || '';
+  return reason.includes('advanced stat') && reason.includes('not visible');
+}
+
+function hasSyntheticCombatStats(row: (typeof august2026DataPack)[number]['rows'][number]) {
+  return Boolean(row.gapFillReason?.toLowerCase().includes('k/d/a gap-filled'));
+}
+
+async function ensureAugust19KnifeEvents() {
+  const dust2 = await db.matches.where('[date+map]').equals([august19Date, 'Dust II']).first();
+  if (!dust2?.id) return;
+
+  for (const event of augustKnifeEvents) {
+    const attackerId = await getOrCreatePlayerId(canonicalImportName(event.attacker));
+    const victimId = await getOrCreatePlayerId(canonicalImportName(event.victim));
+    const exists = await db.knife_events
+      .where('matchId')
+      .equals(dust2.id)
+      .filter((knife) => knife.attackerPlayerId === attackerId && knife.victimPlayerId === victimId)
+      .count();
+    if (!exists) {
+      await db.knife_events.add({
+        matchId: dust2.id,
+        attackerPlayerId: attackerId,
+        victimPlayerId: victimId,
+        createdAt: now()
+      });
+    }
+  }
+}
+
+async function importAugust10And19DataIfMissing() {
+  const flag = localStorage.getItem('cs2_imported_aug10_aug19_match_cards_v2');
+  const august10Count = await db.matches.where('date').equals(august10Date).count();
+  const august19Count = await db.matches.where('date').equals(august19Date).count();
+  if (flag === '1' && august10Count === 4 && august19Count === 4) {
+    await ensureAugust19KnifeEvents();
+    return;
+  }
+  if (august10Count || august19Count) {
+    const incompleteMatches = [
+      ...await db.matches.where('date').equals(august10Date).toArray(),
+      ...await db.matches.where('date').equals(august19Date).toArray()
+    ];
+    const matchIds = incompleteMatches.map((match) => match.id).filter((id): id is number => typeof id === 'number');
+    const matchDayIds = [...new Set(incompleteMatches.map((match) => match.matchDayId).filter((id): id is number => typeof id === 'number'))];
+    for (const matchId of matchIds) {
+      await db.match_players.where('matchId').equals(matchId).delete();
+      await db.knife_events.where('matchId').equals(matchId).delete();
+      await db.matches.delete(matchId);
+    }
+    for (const matchDayId of matchDayIds) {
+      if (await db.matches.where('matchDayId').equals(matchDayId).count() === 0) {
+        await db.match_days.delete(matchDayId);
+      }
+    }
+  }
+
+  const season = await db.seasons.filter((s) => s.isCurrent).first() || await db.seasons.orderBy('id').last();
+  let seasonId = season?.id;
+  if (!seasonId) {
+    seasonId = Number(await db.seasons.add({ name: 'Season 1', isCurrent: true, archived: false, createdAt: now() }));
+  }
+
+  const packs = [
+    { date: august10Date, title: august10MatchDayTitle, matches: august2026DataPack.slice(0, 4) },
+    { date: august19Date, title: august19MatchDayTitle, matches: august2026DataPack.slice(4, 8) }
+  ];
+
+  for (const pack of packs) {
+    const matchDayId = Number(await db.match_days.add({
+      seasonId: Number(seasonId),
+      title: pack.title,
+      eventDate: pack.date,
+      notes: 'Imported from corrected August data pack',
+      createdAt: now()
+    }));
+
+    for (const sourceMatch of pack.matches) {
+      const matchId = Number(await db.matches.add({
+        seasonId: Number(seasonId),
+        matchDayId,
+        date: pack.date,
+        map: sourceMatch.map,
+        teamAName: sourceMatch.teamAName,
+        teamBName: sourceMatch.teamBName,
+        teamAScore: sourceMatch.teamAScore,
+        teamBScore: sourceMatch.teamBScore,
+        winningTeam: sourceMatch.winningTeam,
+        notes: 'Imported from corrected August data pack',
+        createdAt: now()
+      }));
+      const roundsPlayed = Math.max(1, sourceMatch.teamAScore + sourceMatch.teamBScore);
+      const importedRows = [];
+      for (const row of sourceMatch.rows) {
+        const canonicalName = canonicalImportName(row.name);
+        const playerId = await getOrCreatePlayerId(canonicalName);
+        if (canonicalName !== row.name) await addAliasIfMissing(playerId, row.name);
+        if (row.displayName && canonicalName !== row.displayName) await addAliasIfMissing(playerId, row.displayName);
+
+        const advancedMissing = hasUnseenAdvancedStats(row);
+        const syntheticCombat = hasSyntheticCombatStats(row);
+        const logoutPenalty = isMissingAugustPackRow(row);
+        importedRows.push({
+          matchId,
+          playerId,
+          team: row.team,
+          result: row.result,
+          kills: row.kills,
+          deaths: row.deaths,
+          assists: row.assists,
+          damage: advancedMissing ? undefined : deriveDamageFromAdr(row.adr, roundsPlayed),
+          hsPercent: advancedMissing ? undefined : row.hsPercent,
+          utilityDamage: advancedMissing ? undefined : row.utilityDamage,
+          enemyFlashed: advancedMissing ? undefined : row.enemyFlashed,
+          mvps: row.mvps,
+          points: points(row.result, row.kills, row.assists, row.deaths),
+          scoringEligible: true,
+          scoreOverride: logoutPenalty ? 0 : undefined,
+          pointsOverride: logoutPenalty ? 0 : undefined,
+          gapFill: row.gapFill === true,
+          participationNote: logoutPenalty
+            ? 'Logout penalty: player appeared earlier in the matchday but left before the final screenshot. Counts as a game with zero Score.'
+            : syntheticCombat
+              ? 'Combat statistics were average-filled as the supplied logout penalty and are included in scoring.'
+              : advancedMissing
+              ? 'Advanced statistics were not visible; scoring uses the missing-data fallback.'
+              : row.gapFillReason
+        });
+      }
+      await db.match_players.bulkAdd(importedRows);
+    }
+  }
+
+  await ensureAugust19KnifeEvents();
+  localStorage.setItem('cs2_imported_aug10_aug19_match_cards_v2', '1');
+}
+
 async function addAliasIfMissing(playerId: number, alias: string) {
   const existing = await db.player_aliases.where({ playerId, alias }).first();
   if (!existing) {
@@ -1985,6 +2142,7 @@ export async function seedIfEmpty() {
   await importAug5DataIfMissing();
   await repairAug5KnifeStatsIfNeeded();
   await repairAug5SyntheticRowsIfNeeded();
+  await importAugust10And19DataIfMissing();
   await repairJune24Dust2IfNeeded();
   await mergeAmanAliasIfNeeded();
 }
