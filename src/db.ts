@@ -1,6 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { KnifeEvent, Match, MatchDay, MatchPlayer, MatchResult, Player, PlayerAlias, Season } from './types';
 import { importedMatches as august2026DataPack } from './data/august-2026-matchdays';
+import { importedMatches as august24DataPack } from './data/august-24-2026-matchday';
 
 export class LeagueDb extends Dexie {
   players!: Table<Player, number>;
@@ -1206,6 +1207,8 @@ function canonicalImportName(name: string) {
   if (normalized === norm('Gullu') || normalized === norm('GULLU')) return 'GULLU';
   if (normalized === norm('Mr Robot') || normalized === norm('Mr.Robot')) return 'Mr.Robot';
   if (normalized === norm('Dr Kush') || normalized === norm('DrKush')) return 'DrKush';
+  if (normalized === norm('San')) return 'IB';
+  if (normalized === norm('rochak.kedia') || normalized === norm('Rocket Kedia')) return 'Rocket Kedia';
   return name;
 }
 
@@ -1363,6 +1366,125 @@ async function importAugust10And19DataIfMissing() {
 
   await ensureAugust19KnifeEvents();
   localStorage.setItem('cs2_imported_aug10_aug19_match_cards_v2', '1');
+}
+
+const august24Date = '2026-08-24';
+const august24MatchDayTitle = 'War Wednesday - Aug 24, 2026';
+const august24KnifeEvents = [
+  { map: 'Dust II', attacker: 'Manson', victim: 'T-Rex' },
+  { map: 'Dust II', attacker: 'Manson', victim: 'T-Rex' },
+  { map: 'Ancient', attacker: 'Jin', victim: 'fatal_destiny' },
+  { map: 'Mirage', attacker: 'Manson', victim: 'T-Rex' },
+  { map: 'Mirage', attacker: 'Manson', victim: 'MAVERICK' }
+];
+
+async function ensureAugust24KnifeEvents() {
+  const matches = await db.matches.where('date').equals(august24Date).toArray();
+  const matchByMap = new Map(matches.map((match) => [match.map, match]));
+  const desiredCounts = new Map<string, number>();
+
+  for (const event of august24KnifeEvents) {
+    const match = matchByMap.get(event.map);
+    if (!match?.id) continue;
+    const attackerId = await getOrCreatePlayerId(canonicalImportName(event.attacker));
+    const victimId = await getOrCreatePlayerId(canonicalImportName(event.victim));
+    const key = `${match.id}:${attackerId}:${victimId}`;
+    const desired = (desiredCounts.get(key) || 0) + 1;
+    desiredCounts.set(key, desired);
+    const existing = await db.knife_events
+      .where('matchId')
+      .equals(match.id)
+      .filter((knife) => knife.attackerPlayerId === attackerId && knife.victimPlayerId === victimId)
+      .count();
+    if (existing < desired) {
+      await db.knife_events.add({
+        matchId: match.id,
+        attackerPlayerId: attackerId,
+        victimPlayerId: victimId,
+        createdAt: now()
+      });
+    }
+  }
+}
+
+async function importAugust24DataIfMissing() {
+  const flag = localStorage.getItem('cs2_imported_aug24_match_cards_v1');
+  const existingMatches = await db.matches.where('date').equals(august24Date).toArray();
+  if (flag === '1' && existingMatches.length === august24DataPack.length) {
+    await ensureAugust24KnifeEvents();
+    return;
+  }
+
+  if (existingMatches.length) {
+    const matchIds = existingMatches.map((match) => match.id).filter((id): id is number => typeof id === 'number');
+    const matchDayIds = [...new Set(existingMatches.map((match) => match.matchDayId).filter((id): id is number => typeof id === 'number'))];
+    for (const matchId of matchIds) {
+      await db.match_players.where('matchId').equals(matchId).delete();
+      await db.knife_events.where('matchId').equals(matchId).delete();
+      await db.matches.delete(matchId);
+    }
+    for (const matchDayId of matchDayIds) {
+      if (await db.matches.where('matchDayId').equals(matchDayId).count() === 0) await db.match_days.delete(matchDayId);
+    }
+  }
+
+  const season = await db.seasons.filter((item) => item.isCurrent).first() || await db.seasons.orderBy('id').last();
+  let seasonId = season?.id;
+  if (!seasonId) {
+    seasonId = Number(await db.seasons.add({ name: 'Season 1', isCurrent: true, archived: false, createdAt: now() }));
+  }
+
+  const matchDayId = Number(await db.match_days.add({
+    seasonId: Number(seasonId),
+    title: august24MatchDayTitle,
+    eventDate: august24Date,
+    notes: 'Imported from the August 24 scoreboard data pack',
+    createdAt: now()
+  }));
+
+  for (const sourceMatch of august24DataPack) {
+    const matchId = Number(await db.matches.add({
+      seasonId: Number(seasonId),
+      matchDayId,
+      date: august24Date,
+      map: sourceMatch.map,
+      teamAName: sourceMatch.teamAName,
+      teamBName: sourceMatch.teamBName,
+      teamAScore: sourceMatch.teamAScore,
+      teamBScore: sourceMatch.teamBScore,
+      winningTeam: sourceMatch.winningTeam,
+      notes: 'Imported from the August 24 scoreboard data pack',
+      createdAt: now()
+    }));
+    const roundsPlayed = Math.max(1, sourceMatch.teamAScore + sourceMatch.teamBScore);
+    const rows = [];
+    for (const row of sourceMatch.rows) {
+      const canonicalName = canonicalImportName(row.name);
+      const playerId = await getOrCreatePlayerId(canonicalName);
+      if (canonicalName !== row.name) await addAliasIfMissing(playerId, row.name);
+      if (row.displayName && canonicalName !== row.displayName) await addAliasIfMissing(playerId, row.displayName);
+      rows.push({
+        matchId,
+        playerId,
+        team: row.team,
+        result: row.result as MatchResult,
+        kills: row.kills,
+        deaths: row.deaths,
+        assists: row.assists,
+        damage: deriveDamageFromAdr(row.adr, roundsPlayed),
+        hsPercent: row.hsPercent,
+        utilityDamage: row.utilityDamage,
+        enemyFlashed: row.enemyFlashed,
+        mvps: row.mvps,
+        points: points(row.result as MatchResult, row.kills, row.assists, row.deaths),
+        scoringEligible: true
+      });
+    }
+    await db.match_players.bulkAdd(rows);
+  }
+
+  await ensureAugust24KnifeEvents();
+  localStorage.setItem('cs2_imported_aug24_match_cards_v1', '1');
 }
 
 async function addAliasIfMissing(playerId: number, alias: string) {
@@ -2143,6 +2265,7 @@ export async function seedIfEmpty() {
   await repairAug5KnifeStatsIfNeeded();
   await repairAug5SyntheticRowsIfNeeded();
   await importAugust10And19DataIfMissing();
+  await importAugust24DataIfMissing();
   await repairJune24Dust2IfNeeded();
   await mergeAmanAliasIfNeeded();
 }
