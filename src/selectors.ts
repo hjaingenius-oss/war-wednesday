@@ -155,6 +155,11 @@ function hasRealMvpValue(row: Pick<MatchPlayer, 'mvps'>) {
   return row.mvps !== undefined && row.mvps !== null && Number.isFinite(Number(row.mvps));
 }
 
+// A single exceptional stat should not exceed twice its intended scoring weight.
+function boundedPerformanceRatio(value: number, baseline: number) {
+  return Math.min(2, Math.max(0, safeRatio(value, baseline)));
+}
+
 export function isScoringEligible(row: Pick<MatchPlayer, 'scoringEligible'>) {
   return row.scoringEligible !== false;
 }
@@ -194,9 +199,9 @@ export function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]):
       hasRealDamageValue(row)
         ? deriveAdr(safeNumber(row.damage), rounds)
         : lobbyAvgAdrFromActualDamage * (
-          0.7 * safeRatio(safeNumber(row.kills) / rounds, avgKPR) +
-          0.2 * safeRatio(avgDPR, safeNumber(row.deaths) / rounds) +
-          0.1 * safeRatio(safeNumber(row.assists) / rounds, avgAPR)
+          0.7 * boundedPerformanceRatio(safeNumber(row.kills) / rounds, avgKPR) +
+          0.2 * boundedPerformanceRatio(avgDPR, safeNumber(row.deaths) / rounds) +
+          0.1 * boundedPerformanceRatio(safeNumber(row.assists) / rounds, avgAPR)
         )
     ))),
     kpr: average(coreStats.map((item) => item.kpr)),
@@ -213,9 +218,9 @@ export function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]):
     const adrForScoring = hasDamage
       ? deriveAdr(safeNumber(row.damage), rounds)
       : lobbyAvgAdrFromActualDamage * (
-        0.7 * safeRatio(item.kpr, avgKPR) +
-        0.2 * safeRatio(avgDPR, item.dpr) +
-        0.1 * safeRatio(item.apr, avgAPR)
+        0.7 * boundedPerformanceRatio(item.kpr, avgKPR) +
+        0.2 * boundedPerformanceRatio(avgDPR, item.dpr) +
+        0.1 * boundedPerformanceRatio(item.apr, avgAPR)
       );
     const damageDataQuality: MatchScoreBreakdown['damageDataQuality'] = hasDamage ? 'actual' : 'estimated';
 
@@ -226,9 +231,9 @@ export function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]):
     const flashDataQuality: MatchScoreBreakdown['flashDataQuality'] = flashAvailable ? (flashReal ? 'actual' : 'missing_neutral') : 'missing_unavailable';
     const mvpDataQuality: MatchScoreBreakdown['mvpDataQuality'] = mvpAvailable ? (mvpReal ? 'actual' : 'missing_neutral') : 'missing_unavailable';
 
-    const utilityRatio = utilityAvailable ? (utilityReal ? safeRatio(safeNumber(row.utilityDamage) / rounds, averages.udr) : 1) : undefined;
-    const flashRatio = flashAvailable ? (flashReal ? safeRatio(safeNumber(row.enemyFlashed) / rounds, averages.efr) : 1) : undefined;
-    const mvpRatio = mvpAvailable ? (mvpReal ? safeRatio(safeNumber(row.mvps) / rounds, averages.mvpr) : 1) : undefined;
+    const utilityRatio = utilityAvailable ? (utilityReal ? boundedPerformanceRatio(safeNumber(row.utilityDamage) / rounds, averages.udr) : 1) : undefined;
+    const flashRatio = flashAvailable ? (flashReal ? boundedPerformanceRatio(safeNumber(row.enemyFlashed) / rounds, averages.efr) : 1) : undefined;
+    const mvpRatio = mvpAvailable ? (mvpReal ? boundedPerformanceRatio(safeNumber(row.mvps) / rounds, averages.mvpr) : 1) : undefined;
 
     const availableWeights = normalizeWeights(SCORING.performanceWeights, [
       'adr',
@@ -241,10 +246,10 @@ export function calculateMatchScoresForMatch(match: Match, rows: MatchPlayer[]):
     ]);
 
     const performanceRatio =
-      (availableWeights.adr || 0) * safeRatio(adrForScoring, averages.adr) +
-      (availableWeights.kills || 0) * safeRatio(item.kpr, averages.kpr) +
-      (availableWeights.survival || 0) * safeRatio(averages.dpr, item.dpr) +
-      (availableWeights.assists || 0) * safeRatio(item.apr, averages.apr) +
+      (availableWeights.adr || 0) * boundedPerformanceRatio(adrForScoring, averages.adr) +
+      (availableWeights.kills || 0) * boundedPerformanceRatio(item.kpr, averages.kpr) +
+      (availableWeights.survival || 0) * boundedPerformanceRatio(averages.dpr, item.dpr) +
+      (availableWeights.assists || 0) * boundedPerformanceRatio(item.apr, averages.apr) +
       (availableWeights.utilityDamage || 0) * (utilityRatio ?? 0) +
       (availableWeights.enemyFlashed || 0) * (flashRatio ?? 0) +
       (availableWeights.mvps || 0) * (mvpRatio ?? 0);

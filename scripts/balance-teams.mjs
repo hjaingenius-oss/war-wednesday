@@ -10,6 +10,7 @@ if (roster.length !== 16) {
 
 const average = (values) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 const ratio = (value, baseline) => baseline > 0 ? value / baseline : 1;
+const boundedRatio = (value, baseline) => Math.min(2, Math.max(0, ratio(value, baseline)));
 const normalizedName = (name) => String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
 
 function canonicalName(name) {
@@ -22,6 +23,7 @@ function canonicalName(name) {
   if (key === 'drkush') return 'DrKush';
   if (key === 'san') return 'IB';
   if (key === 'rochakkedia' || key === 'rocketkedia') return 'Rocket Kedia';
+  if (key === 'thomas') return 'thomas';
   if (key === 'fatal' || key === 'fataldestiny') return 'fatal_destiny';
   if (key === 'bob' || key === 'bobmarde') return 'Bob Marde';
   if (key === 'maverick') return 'MAVERICK';
@@ -50,6 +52,7 @@ function evaluateFile(path, variableFilter) {
       const value = evaluate(node.operand);
       return node.operator === ts.SyntaxKind.MinusToken ? -value : value;
     }
+    if (ts.isAsExpression(node) || ts.isSatisfiesExpression(node)) return evaluate(node.expression);
     if (ts.isArrayLiteralExpression(node)) return node.elements.map(evaluate);
     if (ts.isObjectLiteralExpression(node)) {
       const value = {};
@@ -76,10 +79,12 @@ const root = new URL('../', import.meta.url);
 const dbPacks = evaluateFile(new URL('src/db.ts', root), (name, value) => name.endsWith('Matches') && Array.isArray(value));
 const augustPack = evaluateFile(new URL('src/data/august-2026-matchdays.ts', root), (name, value) => name === 'importedMatches' && Array.isArray(value));
 const august24Pack = evaluateFile(new URL('src/data/august-24-2026-matchday.ts', root), (name, value) => name === 'importedMatches' && Array.isArray(value));
+const septemberPack = evaluateFile(new URL('src/data/september-2026-matchdays.ts', root), (name, value) => name === 'september2026Matches' && Array.isArray(value));
 const packs = [
   ...dbPacks,
   ...augustPack.map(([, value]) => ['august2026Matches', value]),
   ...august24Pack.map(([, value]) => ['august24Matches', value]),
+  ...septemberPack.map(([, value]) => ['september2026Matches', value]),
 ];
 
 function adrFor(packName, row, rounds) {
@@ -107,9 +112,9 @@ function scoreGame(packName, match) {
   for (const row of prepared) {
     if (Number.isFinite(row.auditAdr)) continue;
     row.auditAdr = lobbyAdr * (
-      0.7 * ratio(row.kills / rounds, avgKpr) +
-      0.2 * ratio(avgDpr, row.deaths / rounds) +
-      0.1 * ratio(row.assists / rounds, avgApr)
+      0.7 * boundedRatio(row.kills / rounds, avgKpr) +
+      0.2 * boundedRatio(avgDpr, row.deaths / rounds) +
+      0.1 * boundedRatio(row.assists / rounds, avgApr)
     );
   }
   const available = (field) => prepared.filter((row) => Number.isFinite(row[field])).length / prepared.length >= 0.5;
@@ -123,13 +128,13 @@ function scoreGame(packName, match) {
   const avgEfr = flashAvailable ? average(prepared.filter((row) => Number.isFinite(row.enemyFlashed)).map((row) => row.enemyFlashed / rounds)) : 0;
   const avgMvpr = mvpAvailable ? average(prepared.filter((row) => Number.isFinite(row.mvps)).map((row) => row.mvps / rounds)) : 0;
   const preliminary = prepared.map((row) => {
-    let performance = w.adr / activeWeight * ratio(row.auditAdr, avgAdr) +
-      w.kills / activeWeight * ratio(row.kills / rounds, avgKpr) +
-      w.survival / activeWeight * ratio(avgDpr, row.deaths / rounds) +
-      w.assists / activeWeight * ratio(row.assists / rounds, avgApr);
-    if (utilityAvailable) performance += w.utility / activeWeight * (Number.isFinite(row.utilityDamage) ? ratio(row.utilityDamage / rounds, avgUdr) : 1);
-    if (flashAvailable) performance += w.flash / activeWeight * (Number.isFinite(row.enemyFlashed) ? ratio(row.enemyFlashed / rounds, avgEfr) : 1);
-    if (mvpAvailable) performance += w.mvp / activeWeight * (Number.isFinite(row.mvps) ? ratio(row.mvps / rounds, avgMvpr) : 1);
+    let performance = w.adr / activeWeight * boundedRatio(row.auditAdr, avgAdr) +
+      w.kills / activeWeight * boundedRatio(row.kills / rounds, avgKpr) +
+      w.survival / activeWeight * boundedRatio(avgDpr, row.deaths / rounds) +
+      w.assists / activeWeight * boundedRatio(row.assists / rounds, avgApr);
+    if (utilityAvailable) performance += w.utility / activeWeight * (Number.isFinite(row.utilityDamage) ? boundedRatio(row.utilityDamage / rounds, avgUdr) : 1);
+    if (flashAvailable) performance += w.flash / activeWeight * (Number.isFinite(row.enemyFlashed) ? boundedRatio(row.enemyFlashed / rounds, avgEfr) : 1);
+    if (mvpAvailable) performance += w.mvp / activeWeight * (Number.isFinite(row.mvps) ? boundedRatio(row.mvps / rounds, avgMvpr) : 1);
     return { row, baseScore: 50 * performance };
   });
   const scored = preliminary.map((item) => {
@@ -146,7 +151,8 @@ for (const [packName, matches] of packs) {
   for (const match of matches) {
     for (const item of scoreGame(packName, match)) {
       games.push({
-        date: match.date,
+      date: match.date,
+      map: match.map,
         name: canonicalName(item.row.name),
         score: item.score,
         kills: Number(item.row.kills || 0),
@@ -193,7 +199,11 @@ for (const player of requested) {
     if (!byDate.has(game.date)) byDate.set(game.date, []);
     byDate.get(game.date).push(game.score);
   }
-  const matchdays = [...byDate.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([, scores]) => average(scores));
+  const recentMatchdays = [...byDate.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([date, scores]) => ({ date, score: average(scores) }));
+  const matchdays = recentMatchdays.map((entry) => entry.score);
+  const latestDate = recentMatchdays[0]?.date;
   const form = formScore(matchdays);
   const season = seasonScore(matchdays);
   known.push({
@@ -205,6 +215,10 @@ for (const player of requested) {
     gameAverage: average(playerGames.map((game) => game.score)),
     kd: playerGames.reduce((sum, game) => sum + game.kills, 0) / Math.max(1, playerGames.reduce((sum, game) => sum + game.deaths, 0)),
     games: playerGames.length,
+    recentMatchdays: recentMatchdays.slice(0, 10),
+    latestGames: playerGames
+      .filter((game) => game.date === latestDate)
+      .map(({ map, score, kills, deaths, assists }) => ({ map, score, kills, deaths, assists })),
   });
 }
 

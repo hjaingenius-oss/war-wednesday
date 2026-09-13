@@ -70,6 +70,10 @@ function ratio(value, baseline) {
   return baseline > 0 ? value / baseline : 1;
 }
 
+function boundedRatio(value, baseline) {
+  return Math.min(2, Math.max(0, ratio(value, baseline)));
+}
+
 function normalizedAdr(packName, row, rounds) {
   if (Number.isFinite(row.adr)) return row.adr;
   if (!Number.isFinite(row.damage)) return undefined;
@@ -90,9 +94,9 @@ function calculateScores(packName, match) {
   for (const row of prepared) {
     if (Number.isFinite(row.auditAdr)) continue;
     row.auditAdr = lobbyAdr * (
-      0.7 * ratio(row.kills / rounds, avgKpr) +
-      0.2 * ratio(avgDpr, row.deaths / rounds) +
-      0.1 * ratio(row.assists / rounds, avgApr)
+      0.7 * boundedRatio(row.kills / rounds, avgKpr) +
+      0.2 * boundedRatio(avgDpr, row.deaths / rounds) +
+      0.1 * boundedRatio(row.assists / rounds, avgApr)
     );
   }
 
@@ -108,13 +112,13 @@ function calculateScores(packName, match) {
   const avgMvpr = mvpAvailable ? average(prepared.filter((row) => Number.isFinite(row.mvps)).map((row) => row.mvps / rounds)) : 0;
 
   const preliminary = prepared.map((row) => {
-    let performance = weights.adr / activeWeight * ratio(row.auditAdr, avgAdr) +
-      weights.kills / activeWeight * ratio(row.kills / rounds, avgKpr) +
-      weights.survival / activeWeight * ratio(avgDpr, row.deaths / rounds) +
-      weights.assists / activeWeight * ratio(row.assists / rounds, avgApr);
-    if (utilityAvailable) performance += weights.utility / activeWeight * (Number.isFinite(row.utilityDamage) ? ratio(row.utilityDamage / rounds, avgUdr) : 1);
-    if (flashAvailable) performance += weights.flash / activeWeight * (Number.isFinite(row.enemyFlashed) ? ratio(row.enemyFlashed / rounds, avgEfr) : 1);
-    if (mvpAvailable) performance += weights.mvp / activeWeight * (Number.isFinite(row.mvps) ? ratio(row.mvps / rounds, avgMvpr) : 1);
+    let performance = weights.adr / activeWeight * boundedRatio(row.auditAdr, avgAdr) +
+      weights.kills / activeWeight * boundedRatio(row.kills / rounds, avgKpr) +
+      weights.survival / activeWeight * boundedRatio(avgDpr, row.deaths / rounds) +
+      weights.assists / activeWeight * boundedRatio(row.assists / rounds, avgApr);
+    if (utilityAvailable) performance += weights.utility / activeWeight * (Number.isFinite(row.utilityDamage) ? boundedRatio(row.utilityDamage / rounds, avgUdr) : 1);
+    if (flashAvailable) performance += weights.flash / activeWeight * (Number.isFinite(row.enemyFlashed) ? boundedRatio(row.enemyFlashed / rounds, avgEfr) : 1);
+    if (mvpAvailable) performance += weights.mvp / activeWeight * (Number.isFinite(row.mvps) ? boundedRatio(row.mvps / rounds, avgMvpr) : 1);
     return { row, baseScore: 50 * performance };
   });
 
