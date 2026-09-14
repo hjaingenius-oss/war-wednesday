@@ -11,43 +11,17 @@ export function calculatePoints(row: Pick<MatchPlayer, 'result'|'kills'|'assists
   return resultPoints(row.result) + safeNumber(row.kills) + safeNumber(row.assists) * 0.5 - safeNumber(row.deaths) * 0.5 + damagePart;
 }
 
-export function normalizeResult(result: unknown): MatchResult {
-  const value = String(result ?? '').toUpperCase();
-  if (value === 'WIN') return 'WIN';
-  if (value === 'DRAW') return 'DRAW';
-  if (value === 'LOSS') return 'LOSS';
-  return 'LOSS';
-}
-
-export function getResultPoints(result: MatchResult): number {
-  if (result === 'WIN') return 5;
-  if (result === 'DRAW') return 3;
-  return 1;
-}
-
-export function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
 export function average(values: number[]) {
   if (!values.length) return 0;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-export function safeRatio(value: number, averageValue: number) {
-  const safeValue = safeNumber(value);
-  const safeAverage = safeNumber(averageValue);
-  if (safeAverage <= 0) return 1;
-  return safeValue / safeAverage;
-}
-
-export function normalizeWeights(weights: Record<string, number>, availableKeys: string[]) {
-  const total = availableKeys.reduce((sum, key) => sum + (weights[key] || 0), 0);
-  if (total <= 0) return weights;
-
-  return Object.fromEntries(
-    availableKeys.map((key) => [key, (weights[key] || 0) / total])
-  );
+export function calculateFinalCsScore(scoreboardScore: unknown, topScore: unknown, result: MatchResult) {
+  const rawScore = Math.max(0, safeNumber(scoreboardScore));
+  const highestScore = Math.max(0, safeNumber(topScore));
+  if (highestScore <= 0) return result === 'WIN' ? 5 : 0;
+  const scaledScore = (rawScore / highestScore) * 100;
+  return Number((scaledScore + (result === 'WIN' ? 5 : 0)).toFixed(2));
 }
 
 export function deriveAdr(damage: number, rounds: number) {

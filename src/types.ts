@@ -59,6 +59,8 @@ export interface MatchPlayer {
   hsPercent?: number;
   utilityDamage?: number;
   enemyFlashed?: number;
+  scoreboardScore?: number;
+  finalScore?: number;
   mvps: number;
   points: number;
   scoringEligible?: boolean;

@@ -534,6 +534,59 @@ nav a.active {
   padding-bottom: 4px;
 }
 
+.knife-leaderboard-card .table-wrap {
+  margin-top: 14px;
+}
+
+.knife-leaderboard {
+  min-width: 620px;
+}
+
+.knife-leaderboard td:first-child a {
+  color: var(--ink);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.knife-leaderboard td:first-child a:hover {
+  color: var(--acid);
+}
+
+.knife-kills {
+  color: var(--acid);
+  font-weight: 900;
+}
+
+.knife-deaths {
+  color: var(--red);
+  font-weight: 800;
+}
+
+.knife-relation {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 5px;
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.knife-relation.killer {
+  color: var(--acid);
+  background: color-mix(in srgb, var(--acid) 9%, transparent);
+}
+
+.knife-relation.victim {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 9%, transparent);
+}
+
 table {
   width: max-content;
   min-width: 1500px;
