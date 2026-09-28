@@ -4,6 +4,7 @@ import { calculateFinalCsScore } from './lib/scoring';
 import { importedMatches as august2026DataPack } from './data/august-2026-matchdays';
 import { importedMatches as august24DataPack } from './data/august-24-2026-matchday';
 import { september2026KnifeEvents, september2026Matches } from './data/september-2026-matchdays';
+import { lateSeptember2026KnifeEvents, lateSeptember2026Matches } from './data/september-16-23-2026-matchdays';
 
 export class LeagueDb extends Dexie {
   players!: Table<Player, number>;
@@ -1220,7 +1221,7 @@ function canonicalImportName(name: string) {
   if (normalized === norm('Gullu') || normalized === norm('GULLU')) return 'GULLU';
   if (normalized === norm('Mr Robot') || normalized === norm('Mr.Robot')) return 'Mr.Robot';
   if (normalized === norm('Dr Kush') || normalized === norm('DrKush')) return 'DrKush';
-  if (normalized === norm('San')) return 'IB';
+  if (normalized === norm('San') || normalized === norm('San Momos')) return 'IB';
   if (normalized === norm('rochak.kedia') || normalized === norm('Rocket Kedia')) return 'Rocket Kedia';
   if (normalized === norm('Stormbreaker') || normalized === norm('Stormbre@ker')) return 'aks289';
   if (normalized === norm('Thomas')) return 'thomas';
@@ -1235,7 +1236,8 @@ async function backfillScoreboardScores() {
     ...aug5Matches,
     ...august2026DataPack,
     ...august24DataPack,
-    ...september2026Matches
+    ...september2026Matches,
+    ...lateSeptember2026Matches
   ];
   const [matches, players, aliases] = await Promise.all([
     db.matches.toArray(),
@@ -1683,6 +1685,128 @@ async function importSeptemberDataIfMissing() {
 
   await ensureSeptemberKnifeEvents();
   localStorage.setItem('cs2_imported_sep2_sep10_match_cards_v1', '1');
+}
+
+const lateSeptemberDates = ['2026-09-16', '2026-09-23'] as const;
+
+async function ensureLateSeptemberKnifeEvents() {
+  const desiredCounts = new Map<string, number>();
+  for (const event of lateSeptember2026KnifeEvents) {
+    const match = await db.matches.where('[date+map]').equals([event.date, event.map]).first();
+    if (!match?.id) continue;
+    const attackerId = await getOrCreatePlayerId(canonicalImportName(event.attacker));
+    const victimId = await getOrCreatePlayerId(canonicalImportName(event.victim));
+    const key = `${match.id}:${attackerId}:${victimId}`;
+    const desired = (desiredCounts.get(key) || 0) + event.count;
+    desiredCounts.set(key, desired);
+    const existing = await db.knife_events
+      .where('matchId')
+      .equals(match.id)
+      .filter((knife) => knife.attackerPlayerId === attackerId && knife.victimPlayerId === victimId)
+      .count();
+    for (let count = existing; count < desired; count += 1) {
+      await db.knife_events.add({
+        matchId: match.id,
+        attackerPlayerId: attackerId,
+        victimPlayerId: victimId,
+        createdAt: now()
+      });
+    }
+  }
+}
+
+async function importLateSeptemberDataIfMissing() {
+  const flag = localStorage.getItem('cs2_imported_sep16_sep23_match_cards_v1');
+  const existingByDate = await Promise.all(lateSeptemberDates.map((date) => db.matches.where('date').equals(date).toArray()));
+  if (flag === '1' && existingByDate.every((matches) => matches.length === 4)) {
+    await ensureLateSeptemberKnifeEvents();
+    return;
+  }
+
+  const existingMatches = existingByDate.flat();
+  if (existingMatches.length) {
+    const matchIds = existingMatches.map((match) => match.id).filter((id): id is number => typeof id === 'number');
+    const matchDayIds = [...new Set(existingMatches.map((match) => match.matchDayId).filter((id): id is number => typeof id === 'number'))];
+    for (const matchId of matchIds) {
+      await db.match_players.where('matchId').equals(matchId).delete();
+      await db.knife_events.where('matchId').equals(matchId).delete();
+      await db.matches.delete(matchId);
+    }
+    for (const matchDayId of matchDayIds) {
+      if (await db.matches.where('matchDayId').equals(matchDayId).count() === 0) await db.match_days.delete(matchDayId);
+    }
+  }
+
+  const season = await db.seasons.filter((item) => item.isCurrent).first() || await db.seasons.orderBy('id').last();
+  let seasonId = season?.id;
+  if (!seasonId) {
+    seasonId = Number(await db.seasons.add({ name: 'Season 1', isCurrent: true, archived: false, createdAt: now() }));
+  }
+
+  const matchDayIds = new Map<string, number>();
+  for (const sourceMatch of lateSeptember2026Matches) {
+    let matchDayId = matchDayIds.get(sourceMatch.date);
+    if (!matchDayId) {
+      matchDayId = Number(await db.match_days.add({
+        seasonId: Number(seasonId),
+        title: sourceMatch.matchDayTitle,
+        eventDate: sourceMatch.date,
+        notes: 'Imported from the September 16 and September 23 data workbook',
+        createdAt: now()
+      }));
+      matchDayIds.set(sourceMatch.date, matchDayId);
+    }
+
+    const matchId = Number(await db.matches.add({
+      seasonId: Number(seasonId),
+      matchDayId,
+      date: sourceMatch.date,
+      map: sourceMatch.map,
+      teamAName: sourceMatch.teamAName,
+      teamBName: sourceMatch.teamBName,
+      teamAScore: sourceMatch.teamAScore,
+      teamBScore: sourceMatch.teamBScore,
+      winningTeam: sourceMatch.winningTeam,
+      notes: `Imported workbook game ${sourceMatch.matchNo}`,
+      createdAt: now()
+    }));
+    const roundsPlayed = Math.max(1, sourceMatch.teamAScore + sourceMatch.teamBScore);
+    const rows = [];
+    for (const row of sourceMatch.rows) {
+      const canonicalName = canonicalImportName(row.name);
+      const playerId = await getOrCreatePlayerId(canonicalName);
+      if (canonicalName !== row.name) await addAliasIfMissing(playerId, row.name);
+      if ('displayName' in row && row.displayName && canonicalName !== row.displayName) {
+        await addAliasIfMissing(playerId, row.displayName);
+      }
+      const absentPenalty = row.dataStatus === 'AbsentZero';
+      rows.push({
+        matchId,
+        playerId,
+        team: row.team,
+        result: row.result as MatchResult,
+        kills: row.kills,
+        deaths: row.deaths,
+        assists: row.assists,
+        damage: row.adr == null ? undefined : deriveDamageFromAdr(row.adr, roundsPlayed),
+        hsPercent: row.hsPercent == null ? undefined : row.hsPercent,
+        utilityDamage: row.utilityDamage == null ? undefined : row.utilityDamage,
+        enemyFlashed: row.enemyFlashed == null ? undefined : row.enemyFlashed,
+        mvps: row.mvps,
+        scoreboardScore: rawScoreboardScore(row),
+        points: points(row.result as MatchResult, row.kills, row.assists, row.deaths),
+        scoringEligible: true,
+        scoreOverride: absentPenalty ? 0 : undefined,
+        pointsOverride: absentPenalty ? 0 : undefined,
+        gapFill: absentPenalty,
+        participationNote: 'note' in row ? row.note : undefined
+      });
+    }
+    await db.match_players.bulkAdd(rows);
+  }
+
+  await ensureLateSeptemberKnifeEvents();
+  localStorage.setItem('cs2_imported_sep16_sep23_match_cards_v1', '1');
 }
 
 async function addAliasIfMissing(playerId: number, alias: string) {
@@ -2277,6 +2401,35 @@ async function mergeAmanAliasIfNeeded() {
   await db.players.delete(aliasPlayer.id);
 }
 
+async function mergeSanMomosAliasIfNeeded() {
+  const ib = await db.players.where('name').equals('IB').first();
+  const aliasPlayer = await db.players.where('name').equals('San Momos').first();
+  if (!ib?.id || !aliasPlayer?.id || ib.id === aliasPlayer.id) return;
+
+  const aliasRows = await db.player_aliases.where('playerId').equals(aliasPlayer.id).toArray();
+  for (const aliasRow of aliasRows) {
+    await addAliasIfMissing(ib.id, aliasRow.alias);
+  }
+  await addAliasIfMissing(ib.id, 'San Momos');
+
+  const rows = await db.match_players.where('playerId').equals(aliasPlayer.id).toArray();
+  if (rows.length) {
+    await Promise.all(rows.map((row) => db.match_players.update(row.id!, { playerId: ib.id! })));
+  }
+
+  const knifeAsAttacker = await db.knife_events.where('attackerPlayerId').equals(aliasPlayer.id).toArray();
+  if (knifeAsAttacker.length) {
+    await Promise.all(knifeAsAttacker.map((event) => db.knife_events.update(event.id!, { attackerPlayerId: ib.id! })));
+  }
+  const knifeAsVictim = await db.knife_events.where('victimPlayerId').equals(aliasPlayer.id).toArray();
+  if (knifeAsVictim.length) {
+    await Promise.all(knifeAsVictim.map((event) => db.knife_events.update(event.id!, { victimPlayerId: ib.id! })));
+  }
+
+  await db.player_aliases.where('playerId').equals(aliasPlayer.id).delete();
+  await db.players.delete(aliasPlayer.id);
+}
+
 async function repairJune3Dust2IfNeeded() {
   const match = await db.matches
     .where('[date+map]')
@@ -2471,7 +2624,9 @@ export async function seedIfEmpty() {
   await importAugust10And19DataIfMissing();
   await importAugust24DataIfMissing();
   await importSeptemberDataIfMissing();
+  await importLateSeptemberDataIfMissing();
   await repairJune24Dust2IfNeeded();
   await mergeAmanAliasIfNeeded();
+  await mergeSanMomosAliasIfNeeded();
   await backfillScoreboardScores();
 }

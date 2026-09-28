@@ -53,6 +53,7 @@ const packs = [
   ...evaluateDataFile(new URL('src/data/august-2026-matchdays.ts', root), (name) => name === 'importedMatches'),
   ...evaluateDataFile(new URL('src/data/august-24-2026-matchday.ts', root), (name) => name === 'importedMatches'),
   ...evaluateDataFile(new URL('src/data/september-2026-matchdays.ts', root), (name) => name === 'september2026Matches'),
+  ...evaluateDataFile(new URL('src/data/september-16-23-2026-matchdays.ts', root), (name) => name === 'lateSeptember2026Matches'),
 ];
 
 const games = packs.flatMap((pack) => pack.matches.map((match, index) => ({
